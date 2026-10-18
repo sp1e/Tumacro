@@ -64,7 +64,7 @@ sealed partial class MacroForm : Form {
     readonly bool testing; uint oldSequence; int attempts; IntPtr target; string savedPath;
     uint observedSequence; int stableTicks;
     readonly bool[] swallowed=new bool[4]; readonly bool[] held=new bool[4];
-    string config=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TumMakro","settings.txt");
+    string config=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Tumacro","settings.txt");
     public string TestError; public bool PathReady { get { return pathReady; } } public bool CopyReady { get { return copyReady; } }
     public bool Busy { get { return busy; } } public bool Active { get { return active; } }
     public string Status { get { return status.Text; } }
@@ -79,19 +79,19 @@ sealed partial class MacroForm : Form {
                 ready.Set(); if(hook!=IntPtr.Zero) Application.Run(hookContext);
             }); hookThread.IsBackground=true; hookThread.Start();
             ready.WaitOne(2000);
-            if(hook==IntPtr.Zero) { active=false; status.Text="Kunde inte ansluta tumknapparna. Starta om programmet."; TestError="Hook installation failed"; } UpdateStates();
+            if(hook==IntPtr.Zero) { active=false; status.Text=L("Kunde inte ansluta tumknapparna. Starta om programmet."); TestError="Hook installation failed"; } UpdateStates();
     }
     public void StartBackground() { backgroundMode=true; IntPtr window=Handle; StartHooks(); }
     public bool HookInstalled { get { return hook!=IntPtr.Zero; } }
     public bool TrayVisible { get { return tray.Visible; } }
     string StartupInfo() {
         try { using(var key=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")) {
-            string command=key==null?null:key.GetValue("TumMakro") as string;
-            return string.IsNullOrEmpty(command)?"Start med Windows: inte inställd.":"Start med Windows: inställd. Programmet öppnas vid klockan.";
-        } } catch { return "Start med Windows: kontrollera under Startappar i Windows."; }
+            string command=key==null?null:(key.GetValue("Tumacro")??key.GetValue("TumMakro")) as string;
+            return string.IsNullOrEmpty(command)?L("Start med Windows: inte inställd."):L("Start med Windows: inställd. Programmet öppnas vid klockan.");
+        } } catch { return L("Start med Windows: kontrollera under Startappar i Windows."); }
     }
-    public void TogglePause() { active=!active; Reset(); StopHotkeysForPause(); status.Text=active?"Aktiv. Nästa tryck på båda tumknapparna kopierar.":"Pausad. Musknappar och tangentgenvägar fungerar som vanligt."; UpdateStates(); }
-    public void Reset() { copyTimer.Stop(); busy=false; pathReady=false; copyReady=false; savedPath=null; status.Text="Båda knapparna börjar om: nästa tryck kopierar. Windows-urklippet finns kvar."; UpdateStates(); }
+    public void TogglePause() { active=!active; Reset(); StopHotkeysForPause(); status.Text=active?L("Aktiv. Nästa tryck på båda tumknapparna kopierar."):L("Pausad. Musknappar och tangentgenvägar fungerar som vanligt."); UpdateStates(); }
+    public void Reset() { copyTimer.Stop(); busy=false; pathReady=false; copyReady=false; savedPath=null; status.Text=L("Båda knapparna börjar om: nästa tryck kopierar. Windows-urklippet finns kvar."); UpdateStates(); }
     void UpdateStates() { RefreshStudio(); }
     IntPtr MouseHook(int code,IntPtr msg,IntPtr data) {
         long message=msg.ToInt64();
@@ -114,30 +114,30 @@ sealed partial class MacroForm : Form {
         return Native.CallNextHookEx(hook,code,msg,data);
     }
     void RecordButton(int button) {
-        lastButton.Text="Senaste tryck: tumknapp "+button+" · "+(swap.Checked?(button==2?"Sökväg som text":"Vanlig kopiera / klistra in"):(button==1?"Sökväg som text":"Vanlig kopiera / klistra in"));
+        lastButton.Text=L("Senaste tryck: tumknapp ")+button+" · "+(swap.Checked?(button==2?L("Sökväg som text"):L("Vanlig kopiera / klistra in")):(button==1?L("Sökväg som text"):L("Vanlig kopiera / klistra in")));
     }
     void Execute(int button,IntPtr foreground) {
         RecordButton(button);
         if(!active) return;
-        if(busy) { status.Text="Kopieringen pågår. Vänta på beskedet Sökvägen är sparad och tryck sedan igen."; return; }
-        if(Native.Modifiers()) { status.Text="Släpp Ctrl, Shift, Alt och Windows-tangenten och försök igen."; return; }
-        if(Native.GetForegroundWindow()!=foreground) { status.Text="Fönstret ändrades. Tryck igen i rätt fönster."; return; }
+        if(busy) { status.Text=L("Kopieringen pågår. Vänta på beskedet Sökvägen är sparad och tryck sedan igen."); return; }
+        if(Native.Modifiers()) { status.Text=L("Släpp Ctrl, Shift, Alt och Windows-tangenten och försök igen."); return; }
+        if(Native.GetForegroundWindow()!=foreground) { status.Text=L("Fönstret ändrades. Tryck igen i rätt fönster."); return; }
         bool path=swap.Checked?button==2:button==1;
         if((path && pathReady) || (!path && copyReady)) {
             try {
                 if(path) Clipboard.SetText(savedPath);
-                if(Native.GetForegroundWindow()!=foreground) { status.Text="Fönstret ändrades. Tryck igen i rätt fönster."; return; }
-                if(!Native.Shortcut(0x56,false)) { status.Text="Windows kunde inte skicka Ctrl+V till det här fönstret."; return; }
+                if(Native.GetForegroundWindow()!=foreground) { status.Text=L("Fönstret ändrades. Tryck igen i rätt fönster."); return; }
+                if(!Native.Shortcut(0x56,false)) { status.Text=L("Windows kunde inte skicka Ctrl+V till det här fönstret."); return; }
                 if(path) { pathReady=false; savedPath=null; } else copyReady=false;
-                status.Text=path?"Skickade den sparade sökvägen till målet. Nästa tryck på sökvägsknappen kopierar igen.":"Skickade Ctrl+V till målet. Nästa tryck på Ctrl+C-knappen kopierar igen."; UpdateStates();
-            } catch { status.Text="Urklipp är upptaget. Försök klistra in igen."; }
+                status.Text=path?L("Skickade den sparade sökvägen till målet. Nästa tryck på sökvägsknappen kopierar igen."):L("Skickade Ctrl+V till målet. Nästa tryck på Ctrl+C-knappen kopierar igen."); UpdateStates();
+            } catch { status.Text=L("Urklipp är upptaget. Försök klistra in igen."); }
             return;
         }
         oldSequence=Native.GetClipboardSequenceNumber(); target=foreground; capturePath=path; attempts=0; busy=true;
         observedSequence=oldSequence; stableTicks=0;
-        if(!Native.Shortcut(0x43,false)) { busy=false; status.Text="Windows kunde inte skicka Ctrl+C. Välj innehållet i ett program med samma behörighet som TumMakro."; return; }
-        if(!path) { busy=false; copyReady=true; status.Text="Skickade Ctrl+C. Nästa tryck skickar Ctrl+V."; UpdateStates(); return; }
-        status.Text="Kopierar markerad sökvägstext eller hämtar kopierade filers sökvägar…"; copyTimer.Start();
+        if(!Native.Shortcut(0x43,false)) { busy=false; status.Text=L("Windows kunde inte skicka Ctrl+C. Välj innehållet i ett program med samma behörighet som Tumacro."); return; }
+        if(!path) { busy=false; copyReady=true; status.Text=L("Skickade Ctrl+C. Nästa tryck skickar Ctrl+V."); UpdateStates(); return; }
+        status.Text=L("Kopierar markerad sökvägstext eller hämtar kopierade filers sökvägar…"); copyTimer.Start();
     }
     void CheckCopy(object sender,EventArgs e) {
         attempts++;
@@ -147,13 +147,13 @@ sealed partial class MacroForm : Form {
             try {
                 if(capturePath) {
                     string clean=PathsFromData(Clipboard.GetDataObject());
-                    if(clean==null) { FinishFailure("Inget text- eller filinnehåll kopierades. Markera sökvägstext eller en fil som programmet kan kopiera och tryck igen."); return; }
+                    if(clean==null) { FinishFailure(L("Inget text- eller filinnehåll kopierades. Markera sökvägstext eller en fil som programmet kan kopiera och tryck igen.")); return; }
                     savedPath=clean; pathReady=true;
                 } else copyReady=true;
-                copyTimer.Stop(); busy=false; status.Text="Sökvägen är sparad. Klicka i målet och tryck samma tumknapp igen för att klistra in."; UpdateStates(); return;
+                copyTimer.Stop(); busy=false; status.Text=L("Sökvägen är sparad. Klicka i målet och tryck samma tumknapp igen för att klistra in."); UpdateStates(); return;
             } catch { }
         }
-        if(attempts>=30 || Native.GetForegroundWindow()!=target) FinishFailure("Ingen kopiering kunde bekräftas. Markera innehållet och försök igen.");
+        if(attempts>=30 || Native.GetForegroundWindow()!=target) FinishFailure(L("Ingen kopiering kunde bekräftas. Markera innehållet och försök igen."));
     }
     void FinishFailure(string message) { copyTimer.Stop(); busy=false; status.Text=message; }
     public static string CleanPaths(string text) {
@@ -193,8 +193,9 @@ static partial class Program {
         if(args.Length>0 && args[0]=="--self-test") return SelfTest(args.Length>1?args[1]:"self-test.txt");
         if(args.Length>0 && args[0]=="--self-test-background") return BackgroundTest(args.Length>1?args[1]:"background-test.txt");
         bool background=Array.IndexOf(args,"--background")>=0;
+        // Legacy IPC names prevent duplicate hooks when an older executable is launched.
         bool created; using(Mutex mutex=new Mutex(true,"Local\\TumMakro-v1",out created)) {
-            if(!created) { if(!background) { try { using(var signal=EventWaitHandle.OpenExisting("Local\\TumMakro.Studio.Open")) signal.Set(); } catch(WaitHandleCannotBeOpenedException) { MessageBox.Show("TumMakro körs redan. Öppna det via ikonen vid klockan.","TumMakro"); } } return 0; }
+            if(!created) { if(!background) { try { using(var signal=EventWaitHandle.OpenExisting("Local\\TumMakro.Studio.Open")) signal.Set(); } catch(WaitHandleCannotBeOpenedException) { MessageBox.Show(UiText.Translate("Tumacro körs redan. Öppna det via ikonen vid klockan.",UiText.StartupLanguage()),"Tumacro"); } } return 0; }
             using(MacroForm form=new MacroForm(false)) {
                 if(background) { form.StartBackground(); Application.Run(); } else Application.Run(form);
             } return 0;
@@ -242,26 +243,26 @@ static partial class Program {
             fileData.SetData(DataFormats.UnicodeText,"display name only");
             Assert(MacroForm.PathsFromData(fileData)=="C:\\test\\a.txt"+Environment.NewLine+@"\\server\share\b.txt","Copied file paths take priority over file display text",report);
             using(MacroForm f=new MacroForm(true)) {
-                f.SetSwap(false); TextBox box=new TextBox { Multiline=true,Text="TumMakro copy test",Bounds=new Rectangle(24,65,530,42) }; f.Controls.Add(box); box.BringToFront();
+                f.SetSwap(false); TextBox box=new TextBox { Multiline=true,Text="Tumacro copy test",Bounds=new Rectangle(24,65,530,42) }; f.Controls.Add(box); box.BringToFront();
                 bool copyFiles=false; var keyTrace=new List<string>();
                 box.KeyDown+=delegate(object sender,KeyEventArgs key) { keyTrace.Add(key.KeyCode+":"+key.Modifiers); };
-                box.KeyDown+=delegate(object s,KeyEventArgs e) { if(copyFiles && e.Control && e.KeyCode==Keys.C) { var files=new System.Collections.Specialized.StringCollection(); files.Add("C:\\TumMakro test\\sample.txt"); files.Add(@"\\server\share\other.txt"); Clipboard.SetFileDropList(files); e.SuppressKeyPress=true; } };
+                box.KeyDown+=delegate(object s,KeyEventArgs e) { if(copyFiles && e.Control && e.KeyCode==Keys.C) { var files=new System.Collections.Specialized.StringCollection(); files.Add("C:\\Tumacro test\\sample.txt"); files.Add(@"\\server\share\other.txt"); Clipboard.SetFileDropList(files); e.SuppressKeyPress=true; } };
                 f.TopMost=true; f.Show(); Pump(100);
                 WaitFor(delegate { Native.FocusTestWindow(f.Handle); box.Focus(); return Native.GetForegroundWindow()==f.Handle && box.Focused; });
                 Assert(f.TestError==null,"Global mouse hook installed",report);
                 Assert(Native.GetForegroundWindow()==f.Handle,"Controlled test window focused",report);
                 box.SelectAll(); PressTestButton(f,box,2);
-                WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="TumMakro copy test"; });
-                Assert(f.CopyReady && Clipboard.GetText()=="TumMakro copy test","Mouse button 2 sends Ctrl+C and arms paste",report);
-                box.Clear(); PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="TumMakro copy test"; });
-                Assert(!f.CopyReady && box.Text=="TumMakro copy test","Second mouse button 2 press sends Ctrl+V and resets; "+f.Status+"; focused="+box.Focused+"; length="+box.TextLength,report);
-                box.Text="/home/test/my file.txt"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; }); Assert(f.PathReady,"Path button copies selected text in an ordinary text window, outside Explorer",report);
+                WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="Tumacro copy test"; });
+                Assert(f.CopyReady && Clipboard.GetText()=="Tumacro copy test","Mouse button 2 sends Ctrl+C and arms paste; "+f.Status+"; focused="+box.Focused+"; selection="+box.SelectionLength+"; keys="+string.Join(",",keyTrace.ToArray()),report);
+                box.Clear(); PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="Tumacro copy test"; });
+                Assert(!f.CopyReady && box.Text=="Tumacro copy test","Second mouse button 2 press sends Ctrl+V and resets; "+f.Status+"; focused="+box.Focused+"; length="+box.TextLength,report);
+                box.Text="/home/test/my file.txt"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; }); Assert(f.PathReady,"Path button copies selected text in an ordinary text window, outside Explorer; "+f.Status+"; focused="+box.Focused+"; selection="+box.SelectionLength+"; busy="+f.Busy+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 Clipboard.SetText("intervening clipboard content"); box.Clear(); PressTestButton(f,box,1); WaitFor(delegate { return box.Text=="/home/test/my file.txt"; });
                 Assert(!f.PathReady && box.Text=="/home/test/my file.txt","Path paste restores selected text after unrelated clipboard copying",report);
                 copyFiles=true; box.Text="selected file items"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; });
-                string capturedFiles="C:\\TumMakro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
+                string capturedFiles="C:\\Tumacro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
                 Assert(f.PathReady && f.SavedPathForTest==capturedFiles,"Path button captures copied file-drop data from a non-Explorer window",report);
-                copyFiles=false; box.Clear(); PressTestButton(f,box,1); string expectedFiles="C:\\TumMakro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
+                copyFiles=false; box.Clear(); PressTestButton(f,box,1); string expectedFiles="C:\\Tumacro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
                 WaitFor(delegate { return box.Text==expectedFiles; });
                 Assert(!f.PathReady && box.Text==expectedFiles,"Multiple copied files paste as path text, including network paths: "+f.Status+"; focused="+box.Focused+"; text length="+box.TextLength+"; clipboard length="+(Clipboard.ContainsText()?Clipboard.GetText().Length:0)+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 f.TogglePause(); box.SelectAll(); PressTestButton(f,box,2); Pump(150);

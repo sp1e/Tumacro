@@ -42,9 +42,15 @@ static partial class Program {
             Chord chord;
             Assert(Chord.Parse("Ctrl + Alt + 1",out chord)&&chord.Text=="Ctrl + Alt + 1","Shortcut normalization and numeric key",report);
             Assert(!Chord.Parse("Ctrl + Ctrl + P",out chord)&&!Chord.Parse("Ctrl + Garbage",out chord)&&!Chord.Parse("Ctrl + P + C",out chord),"Malformed shortcuts rejected",report);
-            var settings=new StudioSettings {Swap=true,Theme="dark",Wheel="Ctrl + Shift + P"}; settings.Macros.Add(new KeyMacro {Name="Kommandopalett",Trigger="Ctrl + Alt + 1",Action="Ctrl + Shift + P"}); string config=Path.Combine(folder,"settings.xml"); settings.Write(config); settings.Theme="light"; settings.Write(config); var read=StudioSettings.Read(config);
-            Assert(read.Theme=="light"&&read.Swap&&read.Macros[0].Name=="Kommandopalett"&&read.Wheel=="Ctrl + Shift + P","Settings persist wheel, macros, theme and swap",report);
+            var settings=new StudioSettings {Swap=true,Theme="dark",Language="en",Wheel="Ctrl + Shift + P"}; settings.Macros.Add(new KeyMacro {Name="Kommandopalett",Trigger="Ctrl + Alt + 1",Action="Ctrl + Shift + P"}); string config=Path.Combine(folder,"settings.xml"); settings.Write(config); settings.Theme="light"; settings.Write(config); var read=StudioSettings.Read(config);
+            Assert(read.Language=="en"&&read.Theme=="light"&&read.Swap&&read.Macros[0].Name=="Kommandopalett"&&read.Wheel=="Ctrl + Shift + P","Settings persist wheel, macros, theme and swap",report);
             Assert(StudioSettings.Read(config+".bak").Theme=="dark","Atomic settings replacement retains backup",report);
+            string migrationRoot=Path.Combine(folder,"rename-"+Guid.NewGuid().ToString("N"));
+            string legacyDirectory=Path.Combine(migrationRoot,"TumMakro"), currentDirectory=Path.Combine(migrationRoot,"Tumacro");
+            Directory.CreateDirectory(legacyDirectory); read.Write(Path.Combine(legacyDirectory,"settings.xml")); read.Write(Path.Combine(legacyDirectory,"settings.xml")); File.WriteAllText(Path.Combine(legacyDirectory,"settings.txt"),"swap");
+            Assert(StudioSettings.CopyLegacySettings(currentDirectory,legacyDirectory) && StudioSettings.Read(Path.Combine(currentDirectory,"settings.xml")).Macros[0].Name=="Kommandopalett" && File.Exists(Path.Combine(currentDirectory,"settings.xml.bak")) && File.ReadAllText(Path.Combine(currentDirectory,"settings.txt"))=="swap","Rename migrates legacy macros, preferences and backup",report);
+            var migrated=StudioSettings.Read(Path.Combine(currentDirectory,"settings.xml")); migrated.Theme="dark"; migrated.Write(Path.Combine(currentDirectory,"settings.xml"));
+            Assert(!StudioSettings.CopyLegacySettings(currentDirectory,legacyDirectory) && StudioSettings.Read(Path.Combine(currentDirectory,"settings.xml")).Theme=="dark" && StudioSettings.Read(Path.Combine(legacyDirectory,"settings.xml")).Theme=="light","Migration preserves existing Tumacro settings and leaves legacy files intact",report);
             using(var form=new MacroForm(true)) {
                 var box=new TextBox {Multiline=true,Bounds=new Rectangle(24,66,600,50),Text="Studio integration"}; form.Controls.Add(box); box.BringToFront(); form.TopMost=true; form.Show(); Pump(100);
                 Assert(form.HookInstalled,"Studio installs native mouse hook",report);
@@ -57,6 +63,7 @@ static partial class Program {
                 form.Quit();
             }
             using(var form=new MacroForm(true)) { form.SelectForTest(2); Assert(!form.IsDisposed,"Wheel configuration view builds",report); form.SelectForTest(0); form.SelectForTest(1); Assert(!form.IsDisposed,"Both thumb views build",report); }
+            using(var form=new MacroForm(true)) { form.TopMost=true; form.Show(); Pump(100); Native.FocusTestWindow(form.Handle); form.ExerciseLanguageForTest(delegate(bool value,string name) { Assert(value,name,report); },Pump); form.Quit(); }
             using(var form=new MacroForm(true)) { form.TopMost=true; form.Show(); Pump(100); Native.FocusTestWindow(form.Handle); form.ExerciseCrudForTest(delegate(bool value,string name) { Assert(value,name,report); },Pump); form.Quit(); }
             File.WriteAllLines(file,report.ToArray()); return 0;
         } catch(Exception error) { report.Add("FAIL: "+error); File.WriteAllLines(file,report.ToArray()); return 1; }
