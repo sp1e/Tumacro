@@ -1,83 +1,41 @@
-# TumMakro
+# TumMakro Studio 1.0
 
-Två tumknappar. Ett tryck kopierar, nästa tryck på samma knapp klistrar in. Efter inklistringen börjar knappen om med kopiering.
+Ett litet Windows-program för två tumknappar, mushjulets mittklick och egna tangentkombinationer. Studio visar en schematisk mus: välj knapp 1, 2 eller 3 för att se dess funktion.
 
-![TumMakro med tydliga knappfunktioner och nästa åtgärd](assets/TumMakro-1.2.png)
+## Musknappar
 
-## Vilken knapp gör vad?
+- **Tumknapp 1:** första trycket kopierar markerad sökvägstext eller kopierade filers sökvägar. Nästa tryck klistrar in den sparade texten. Kopian behålls även om du använder Windows-urklippet däremellan.
+- **Tumknapp 2:** första trycket skickar Ctrl+C och nästa Ctrl+V. Den använder det som finns i Windows-urklippet vid inklistringen.
+- **Mushjul 3:** välj vanligt mittklick, en egen tangentkombination eller ett sparat tangentmakro. Tilldelningen körs när du trycker ned hjulet. Rullning uppåt och nedåt behåller sin funktion.
 
-| Knapp som standard | Första trycket | Nästa tryck |
-|---|---|---|
-| Tumknapp 1, normalt Bakåt | Kopierar markerad sökvägstext eller hämtar kopierade filers sökvägar | Klistrar in den sparade kopian som text |
-| Tumknapp 2, normalt Framåt | Skickar Ctrl+C | Skickar Ctrl+V |
+Sökvägsfunktionen har ingen spärr till Utforskaren. Programmet du kopierar från behöver kunna lämna text eller filinformation i urklippet. Du kan byta plats på tumknapparnas funktioner; deras två steg är oberoende.
 
-**Sökvägsknappen har ingen spärr till Utforskaren.** Du kan markera sökvägstext i en editor, textruta, terminal, webbsida eller ett annat program som stöder Ctrl+C. Du kan också markera filer eller mappar i ett program som kopierar filinformation till Windows-urklippet. TumMakro hämtar då sökvägarna och klistrar senare in dem som text, en sökväg per rad.
+## Tangentmakron
 
-Programmet kräver inte att texten har en viss sökvägsform eller att filen finns på den här datorn. Det accepterar bland annat Windows-sökvägar, nätverkssökvägar, relativa sökvägar, Unix-sökvägar och URL:er. Programmet du kopierar från måste lämna text eller filinformation i urklippet; TumMakro kan inte härleda en dold sökväg ur en filikon som programmet inte kan kopiera. Kopiering använder Ctrl+C, inte ett specialkommando för Utforskaren.
+Välj Lägg till tangentmakro. Ange namn och tryck aktiveringen respektive kombinationen som ska skickas i fälten. Backsteg rensar ett kombinationsfält. Aktiveringen behöver Ctrl, Alt eller Win tillsammans med en tangent. Släpp genvägens tangenter efter trycket, så skickar TumMakro makrot till det aktuella programmet.
 
-Sökvägsknappen sparar sin kopia tills du klistrar in. Om du kopierar annat under tiden klistrar den ändå in den sparade sökvägen. Omgivande citattecken på en rad tas bort. Flera kopierade filer ger flera sökvägsrader.
+Programmet kontrollerar upptagna och dubblerade genvägar. Ett makro får inte skicka en genväg som aktiverar något av dina egna makron. Ett tangentmakro som tilldelas hjulet kopieras dit; hjulets sparade funktion finns kvar om du sedan tar bort tangentmakrot.
 
-**Ctrl+C/Ctrl+V-knappen använder det vanliga Windows-urklippet.** Den kan kopiera och klistra in text eller filer, beroende på vilket program du använder. Om du ändrar urklippet mellan trycken klistrar nästa tryck in det nya innehållet. Utan markering kan Ctrl+C lämna gammalt innehåll i urklippet.
+## Starta och använda
 
-## Så använder du knapparna
+Kör TumMakro.exe. **Dölj till klockan** och fönstrets kryss behåller programmet i bakgrunden. Dubbelklicka på ikonen vid klockan eller starta programfilen igen för att öppna fönstret. Högerklicka på ikonen och välj **Avsluta** för att stänga programmet.
 
-1. Markera det du vill kopiera och tryck rätt tumknapp.
-2. Klicka där du vill klistra in och tryck **samma tumknapp** igen.
-3. Nästa tryck på den knappen kopierar något nytt.
+**Pausa** återger musknappar och registrerade tangentgenvägar till Windows. **Börja om** återställer tumknapparna till kopiering. Temaväljaren erbjuder Följ Windows, Ljust läge och Mörkt läge; valet sparas.
 
-Varje knapp har ett eget kort. Kortet visar knappnumret, vad knappen kopierar och **vad nästa tryck gör**. Radens steg 1 av 2 betyder kopiering; steg 2 av 2 betyder inklistring. Knappkorten visar Pausad när makrona är pausade.
+Razer Synapse behöver ge tumknapparna funktionerna Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att TumMakro startas med samma behörighet.
 
-## Reglagen i programmet
+## Automatisk start
 
-| Reglage | Vad det gör |
-|---|---|
-| **Pausa båda knapparna** | Stoppar makrona och låter tumknapparna fungera som vanligt. Välj Aktivera makron för att fortsätta. |
-| **Börja om med kopiering** | Återställer båda knapparnas växling. Nästa tryck kopierar. Innehållet i Windows-urklippet finns kvar. |
-| **Byt sökvägsknapp och Ctrl+C-knapp** | Byter vilken tumknapp som har vilken funktion. Båda börjar om med kopiering. Ditt val sparas. |
-| **Dölj till klockan** eller fönstrets kryss | Döljer fönstret. Makrona fortsätter att köra. |
-| **Hjälp** | Förklarar knapparna, arbetsflödet och felsökningen. |
-| **Avsluta** i ikonens högerklicksmeny | Stoppar programmet och makrona. |
+Lägg Installera-autostart.ps1 i samma mapp som TumMakro.exe och kör skriptet i PowerShell. Det installerar programmet i `%LOCALAPPDATA%\TumMakro` och ställer in start vid Windows-inloggning, dolt vid klockan. Ingen administratörsbehörighet krävs.
 
-Dubbelklicka på ikonen vid klockan för att öppna fönstret igen. Ikonen kan ligga under pilen för dolda ikoner.
+Parametern `-Avinstallera` tar bort autostarten och behåller filer och inställningar.
 
-## Hämta och kör
+## Filer och systemkrav
 
-Hämta **TumMakro.exe** från [senaste utgåvan](https://github.com/sp1e/TumMakro/releases/latest) och dubbelklicka för att öppna programmet. Det kräver 64-bitars Windows och .NET Framework 4.x. Det finns inga externa bibliotek att installera.
+Windows 10/11 x64 med .NET Framework 4.8. Ingen separat webbruntime behövs. Programmet använder inget nätverk och samlar inte in telemetri. Inställningar sparas i `%LOCALAPPDATA%\TumMakro\settings.xml`, med säkerhetskopia. Kopierad sökvägstext lagras i arbetsminnet tills den klistras in eller återställs. Programfilen saknar kodsigneringscertifikat.
 
-## Starta med Windows
+## Bygga
 
-Hämta också **Installera-autostart.ps1** från utgåvan och lägg den i samma mapp som TumMakro.exe. Kör från den mappen:
+Kör Bygg.ps1 i PowerShell. Källkod och Windows-manifest finns i src. Bygget använder Windows .NET Framework-kompilator och skapar TumMakro.exe.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Installera-autostart.ps1
-```
-
-Skriptet kopierar programmet till `%LOCALAPPDATA%\TumMakro\TumMakro.exe` och registrerar autostart för det aktuella Windows-kontot. Vid inloggning startar det med `--background`: fönstret är dolt, ikonen finns vid klockan och makrona är aktiva. Du kan flytta den ursprungliga programfilen utan att autostarten påverkas.
-
-För att ta bort autostarten men behålla programfilerna:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Installera-autostart.ps1 -Avinstallera
-```
-
-Du kan också inaktivera TumMakro i Windows inställningar för startappar. Autostarten använder värdet `TumMakro` under `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` och kräver inga administratörsrättigheter.
-
-## Om en knapp inte fungerar
-
-Kontrollera att du har markerat innehållet och att programmet stöder vanlig kopiering. Släpp Ctrl, Shift, Alt och Windows-tangenten innan du använder tumknappen. Windows kan blockera simulerade tangenttryckningar till program som körs med högre behörighet.
-
-Tumknapparna behöver rapporteras som Windows extraknappar 1 och 2, vanligen **Mouse Button 4 / Back** och **Mouse Button 5 / Forward**. Om Razer Synapse skickar en tangent eller ett eget makro behöver du återställa knappens standardfunktion. Raden **Senaste tryck** visar vilken knapp Windows rapporterar.
-
-## Data och testning
-
-TumMakro gör inga nätverksanrop och sparar inget kopierat innehåll på disk. Det sparar knappordningen i `%LOCALAPPDATA%\TumMakro\settings.txt`. Programmet har de två makrona ovan; det är ingen generell redigerare för tangentsekvenser.
-
-Bygg källkoden i `src/TumMakro.cs` med Windows .NET Framework-kompilator:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Bygg.ps1
-.\TumMakro.exe --self-test .\self-test.txt
-.\TumMakro.exe --self-test-background .\background-test.txt
-```
-
-Makrotestet behöver ett interaktivt Windows-skrivbord. Det provar kopiering av sökvägstext i ett vanligt textfönster utanför Utforskaren, kopierade filers sökvägar, nätverkssökvägar, sparad kopia, knappbyte, paus och återställning. Bakgrundstestet kontrollerar dolt fönster, ikon och aktiv knappavläsning. Simulerade filkopieringsdata i testet motsvarar standardformatet FileDrop; testet bevisar inte att varje tredjepartsprogram eller Razer-profil lämnar samma data.
+Studio 1.0 är den nya designutgåvan. GitHub-taggen är `studio-v1.0.0`; äldre utgåvor med taggarna v1.0.0–v1.2.0 bevaras.

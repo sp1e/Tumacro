@@ -13,8 +13,12 @@ try {
     $installedExe = Join-Path $installFolder 'TumMakro.exe'
     New-Item -ItemType Directory -Force -Path $installFolder | Out-Null
     if ([IO.Path]::GetFullPath($sourceExe) -ne [IO.Path]::GetFullPath($installedExe)) {
-        Get-Process -Name TumMakro -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installedExe } | Stop-Process
-        Copy-Item -LiteralPath $sourceExe -Destination $installedExe -Force
+        $runningApps = @(Get-Process -Name TumMakro -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installedExe })
+        foreach ($runningApp in $runningApps) { Stop-Process -Id $runningApp.Id; $runningApp.WaitForExit(3000) | Out-Null }
+        for ($attempt=0; $attempt -lt 10; $attempt++) {
+            try { Copy-Item -LiteralPath $sourceExe -Destination $installedExe -Force; break }
+            catch { if ($attempt -eq 9) { throw }; Start-Sleep -Milliseconds 150 }
+        }
     }
     $command = '"' + $installedExe + '" --background'
     $runKey.SetValue('TumMakro', $command, [Microsoft.Win32.RegistryValueKind]::String)

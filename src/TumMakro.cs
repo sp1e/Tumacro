@@ -7,7 +7,7 @@ using System.IO;
 using System.Threading;
 using System.Collections.Generic;
 
-static class Native {
+static partial class Native {
     public delegate IntPtr HookProc(int code, IntPtr message, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int x,y; }
     [StructLayout(LayoutKind.Sequential)] public struct Mouse { public Point pt; public uint mouseData, flags, time; public UIntPtr extra; }
@@ -52,12 +52,10 @@ static class Native {
     }
 }
 
-sealed class MacroForm : Form {
-    readonly Label pathState=new Label(), copyState=new Label(), status=new Label(), lastButton=new Label();
-    readonly Label activity=new Label(), pathButton=new Label(), copyButton=new Label(), pathHint=new Label(), copyHint=new Label(), pathStep=new Label(), copyStep=new Label();
-    readonly Panel pathCard=new Panel(), copyCard=new Panel();
+sealed partial class MacroForm : Form {
+    readonly Label status=new Label(), lastButton=new Label();
+    readonly Label activity=new Label();
     readonly ToolTip tips=new ToolTip();
-    static readonly Color Ink=Color.FromArgb(27,43,64), Muted=Color.FromArgb(89,106,125), Blue=Color.FromArgb(35,88,181), Line=Color.FromArgb(215,224,234);
     readonly Button pause=new Button(); readonly CheckBox swap=new CheckBox();
     readonly NotifyIcon tray=new NotifyIcon(); readonly System.Windows.Forms.Timer copyTimer=new System.Windows.Forms.Timer();
     Native.HookProc callback; IntPtr hook; volatile bool active=true; bool busy, pathReady, copyReady, quitting, capturePath;
@@ -65,55 +63,13 @@ sealed class MacroForm : Form {
     bool hooksStarted, backgroundMode;
     readonly bool testing; uint oldSequence; int attempts; IntPtr target; string savedPath;
     uint observedSequence; int stableTicks;
-    readonly bool[] swallowed=new bool[3]; readonly bool[] held=new bool[3];
+    readonly bool[] swallowed=new bool[4]; readonly bool[] held=new bool[4];
     string config=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TumMakro","settings.txt");
     public string TestError; public bool PathReady { get { return pathReady; } } public bool CopyReady { get { return copyReady; } }
     public bool Busy { get { return busy; } } public bool Active { get { return active; } }
     public string Status { get { return status.Text; } }
     public string SavedPathForTest { get { return savedPath; } }
-    public MacroForm(bool test) {
-        testing=test; Text="TumMakro · 1.2"; Font=new Font("Segoe UI",10); ClientSize=new Size(760,746);
-        AutoScaleMode=AutoScaleMode.Dpi; StartPosition=FormStartPosition.CenterScreen;
-        AutoScroll=true; AutoScrollMinSize=new Size(0,746);
-        ClientSize=new Size(760,Math.Min(746,Math.Max(520,Screen.PrimaryScreen.WorkingArea.Height-80)));
-        FormBorderStyle=FormBorderStyle.FixedSingle; MaximizeBox=false;
-        BackColor=Color.FromArgb(244,247,251); ForeColor=Ink; Icon=SystemIcons.Application;
-        AddLabel("TumMakro",28,22,500,43,25,FontStyle.Bold);
-        AddLabel("Två tryck på samma knapp: kopiera först, klistra in sedan.",30,70,580,27,11,FontStyle.Regular);
-        SetupLabel(activity,592,30,138,36); activity.TextAlign=ContentAlignment.MiddleCenter; activity.Font=new Font("Segoe UI",10,FontStyle.Bold);
-        Panel guide=new Panel { BackColor=Color.FromArgb(229,238,251),Bounds=new Rectangle(28,111,704,82) }; Controls.Add(guide);
-        CardText(guide,new Label(),"1. Markera det du vill kopiera. Tryck på en tumknapp.",16,12,672,24,11,FontStyle.Regular,Ink);
-        CardText(guide,new Label(),"2. Klicka där du vill klistra in. Tryck samma tumknapp igen.",16,44,672,24,11,FontStyle.Regular,Ink);
-        BuildCard(pathCard,pathButton,pathStep,pathState,pathHint,28,"Sökväg som text","Kopierar sökvägstext eller filers sökvägar.\nSparar kopian till nästa tryck.");
-        BuildCard(copyCard,copyButton,copyStep,copyState,copyHint,392,"Vanlig kopiera / klistra in","Skickar Ctrl+C, sedan Ctrl+V.\nAnvänder det vanliga Windows-urklippet.");
-        swap.Text="Byt sökvägsknapp och Ctrl+C-knapp"; swap.SetBounds(30,435,690,30); swap.TabIndex=0; Controls.Add(swap);
-        tips.SetToolTip(swap,"Byter vilken tumknapp som kopierar sökväg. Båda knapparna börjar om med kopiering.");
-        try { if(!testing && File.Exists(config)) swap.Checked=File.ReadAllText(config).Trim()=="swap"; } catch { }
-        swap.CheckedChanged+=delegate { Reset(); status.Text=active?"Knappordningen är bytt. Nästa tryck på båda knapparna kopierar.":"Knappordningen är bytt. Båda makrona är fortfarande pausade."; if(!testing) try { Directory.CreateDirectory(Path.GetDirectoryName(config)); File.WriteAllText(config,swap.Checked?"swap":"normal"); } catch { status.Text="Knappordningen ändrades men kunde inte sparas till nästa start."; } };
-        StyleButton(pause,"Pausa båda knapparna",28,483,186,44,true); pause.TabIndex=1; pause.Click+=delegate { TogglePause(); };
-        Button reset=new Button(); StyleButton(reset,"Börja om med kopiering",226,483,222,44,false); reset.TabIndex=2; reset.Click+=delegate { Reset(); };
-        tips.SetToolTip(reset,"Nästa tryck på båda knapparna kopierar. Innehållet i Windows urklipp finns kvar.");
-        Button hide=new Button(); StyleButton(hide,"Dölj till klockan",460,483,180,44,false); hide.TabIndex=3; hide.Click+=delegate { Hide(); };
-        tips.SetToolTip(hide,"Döljer bara fönstret. Makrona fortsätter. Öppna med dubbelklick på ikonen vid klockan.");
-        Button help=new Button(); StyleButton(help,"Hjälp",652,483,80,44,false); help.TabIndex=4; help.Click+=delegate { ShowHelp(); };
-        Panel feedback=new Panel { BackColor=Color.White,Bounds=new Rectangle(28,545,704,86) }; Controls.Add(feedback);
-        CardText(feedback,new Label(),"SENASTE HÄNDELSE",16,10,660,17,9,FontStyle.Bold,Muted);
-        CardText(feedback,status,"",16,34,672,40,10,FontStyle.Regular,Ink);
-        SetupLabel(lastButton,30,643,702,22); lastButton.ForeColor=Muted; lastButton.Font=new Font("Segoe UI",9);
-        lastButton.Text="Osäker på vilken knapp? Tryck en tumknapp så visas knappnumret här.";
-        AddLabel("Dölj eller kryss: makrona fortsätter. Dubbelklicka på ikonen vid klockan för att öppna.\nAvsluta programmet: högerklicka på ikonen vid klockan och välj Avsluta.",30,674,702,43,9,FontStyle.Regular);
-        AddLabel(StartupInfo(),30,723,702,20,9,FontStyle.Regular);
-        status.Text="Redo att kopiera. Markera en sökväg, text eller fil och tryck på rätt tumknapp ovan.";
-        ContextMenuStrip menu=new ContextMenuStrip(); menu.Items.Add("Öppna",null,delegate { Show(); WindowState=FormWindowState.Normal; Activate(); });
-        menu.Items.Add("Pausa / aktivera makron",null,delegate { TogglePause(); }); menu.Items.Add("Börja om med kopiering",null,delegate { Reset(); });
-        menu.Items.Add("Avsluta",null,delegate { quitting=true; Close(); }); tray.Icon=SystemIcons.Application; tray.ContextMenuStrip=menu;
-        tray.DoubleClick+=delegate { Show(); Activate(); }; tray.Visible=!testing;
-        copyTimer.Interval=40; copyTimer.Tick+=CheckCopy;
-        FormClosing+=delegate(object sender,FormClosingEventArgs e) { if(!quitting && !testing && e.CloseReason==CloseReason.UserClosing) { e.Cancel=true; Hide(); } };
-        Shown+=delegate { StartHooks(); };
-        FormClosed+=delegate { if(backgroundMode) Application.ExitThread(); };
-        UpdateStates();
-    }
+    public MacroForm(bool test) { testing=test; InitStudio(); }
     void StartHooks() {
             if(hooksStarted) return;
             hooksStarted=true;
@@ -128,69 +84,30 @@ sealed class MacroForm : Form {
     public void StartBackground() { backgroundMode=true; IntPtr window=Handle; StartHooks(); }
     public bool HookInstalled { get { return hook!=IntPtr.Zero; } }
     public bool TrayVisible { get { return tray.Visible; } }
-    void AddLabel(string text,int x,int y,int w,int h,int size,FontStyle style) { Label l=new Label { Text=text,Font=new Font("Segoe UI",size,style),ForeColor=size<13?Muted:Ink }; SetupLabel(l,x,y,w,h); }
-    void SetupLabel(Label l,int x,int y,int w,int h) { l.SetBounds(x,y,w,h); Controls.Add(l); }
-    void CardText(Control parent,Label label,string text,int x,int y,int w,int h,int size,FontStyle style,Color color) { label.Text=text; label.Font=new Font("Segoe UI",size,style); label.ForeColor=color; label.SetBounds(x,y,w,h); parent.Controls.Add(label); }
-    void BuildCard(Panel card,Label button,Label step,Label state,Label hint,int x,string title,string detail) {
-        card.BackColor=Color.White; card.SetBounds(x,209,340,207); Controls.Add(card);
-        card.Paint+=delegate(object sender,PaintEventArgs e) { using(Pen border=new Pen(Line)) e.Graphics.DrawRectangle(border,0,0,card.Width-1,card.Height-1); };
-        CardText(card,button,"",18,13,304,22,10,FontStyle.Bold,Blue);
-        CardText(card,new Label(),title,18,42,304,24,12,FontStyle.Bold,Ink);
-        CardText(card,new Label(),detail,18,69,304,37,9,FontStyle.Regular,Muted);
-        CardText(card,step,"",18,115,304,17,8,FontStyle.Bold,Muted);
-        CardText(card,state,"",18,137,304,30,16,FontStyle.Bold,Blue);
-        CardText(card,hint,"",18,175,304,28,9,FontStyle.Regular,Muted);
-        card.AccessibleName=title; tips.SetToolTip(card,detail);
-    }
-    void StyleButton(Button button,string text,int x,int y,int w,int h,bool primary) {
-        button.Text=text; button.SetBounds(x,y,w,h); button.FlatStyle=FlatStyle.Flat; button.FlatAppearance.BorderSize=1;
-        button.FlatAppearance.BorderColor=primary?Blue:Line; button.BackColor=primary?Blue:Color.White;
-        button.ForeColor=primary?Color.White:Ink; button.Font=new Font("Segoe UI",10,primary?FontStyle.Bold:FontStyle.Regular);
-        button.UseVisualStyleBackColor=false; button.Cursor=Cursors.Hand; Controls.Add(button);
-    }
-    void ShowHelp() {
-        MessageBox.Show(this,"TVÅ TRYCK PÅ SAMMA KNAPP\n1. Markera innehållet och tryck för att kopiera.\n2. Klicka i målet och tryck samma knapp för att klistra in.\n3. Nästa tryck börjar om med kopiering.\n\nSÖKVÄG SOM TEXT\nMarkera sökvägstext i valfritt program som stöder Ctrl+C, eller markera en fil som programmet kan kopiera. TumMakro hämtar texten eller filernas sökvägar från urklippet. Ingen spärr till Utforskaren.\n\nSökvägen sparas tills du klistrar in. Om du kopierar en fil blir resultatet dess sökväg som text, inte en ny fil. Programmet du kopierar från måste lämna text eller filinformation i urklippet.\n\nVANLIG KOPIERA / KLISTRA IN\nFörsta trycket skickar Ctrl+C. Nästa tryck skickar Ctrl+V och klistrar in det som då finns i Windows-urklippet. Det kan vara text eller filer.\n\nKNAPPAR OCH PAUS\nKortens rubriker visar knappnumren. Du kan byta plats på funktionerna. Paus ger båda knapparna sina vanliga funktioner. Börja om med kopiering gör att nästa tryck kopierar på båda knapparna.\n\nOM INGET HÄNDER\nStäll tumknapparna på Back/Bakåt och Forward/Framåt i Razer Synapse. Markera innehållet först och släpp Ctrl, Shift, Alt och Windows-tangenten.\n\nDÖLJ ELLER AVSLUTA\nDölj och kryss behåller makrona vid klockan. För att stoppa programmet: högerklicka på ikonen och välj Avsluta.","Så fungerar TumMakro",MessageBoxButtons.OK,MessageBoxIcon.Information);
-    }
     string StartupInfo() {
         try { using(var key=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")) {
             string command=key==null?null:key.GetValue("TumMakro") as string;
             return string.IsNullOrEmpty(command)?"Start med Windows: inte inställd.":"Start med Windows: inställd. Programmet öppnas vid klockan.";
         } } catch { return "Start med Windows: kontrollera under Startappar i Windows."; }
     }
-    public void TogglePause() { active=!active; Reset(); status.Text=active?"Aktiv. Nästa tryck på båda knapparna kopierar.":"Pausad. Tumknapparna fungerar som vanligt. Klicka Aktivera makron för att fortsätta."; UpdateStates(); }
+    public void TogglePause() { active=!active; Reset(); StopHotkeysForPause(); status.Text=active?"Aktiv. Nästa tryck på båda tumknapparna kopierar.":"Pausad. Musknappar och tangentgenvägar fungerar som vanligt."; UpdateStates(); }
     public void Reset() { copyTimer.Stop(); busy=false; pathReady=false; copyReady=false; savedPath=null; status.Text="Båda knapparna börjar om: nästa tryck kopierar. Windows-urklippet finns kvar."; UpdateStates(); }
-    void UpdateStates() {
-        activity.Text=active?"AKTIV":"PAUSAD";
-        activity.BackColor=active?Color.FromArgb(220,242,230):Color.FromArgb(251,232,195);
-        activity.ForeColor=active?Color.FromArgb(25,99,62):Color.FromArgb(125,82,20);
-        pause.Text=active?"Pausa båda knapparna":"Aktivera makron";
-        tips.SetToolTip(pause,active?"Pausar makrona på båda knapparna. Knapparna fungerar då som vanligt.":"Aktiverar makrona på båda knapparna. Nästa tryck kopierar.");
-        pathButton.Text=swap.Checked?"TUMKNAPP 2 · FRAMÅT":"TUMKNAPP 1 · BAKÅT";
-        copyButton.Text=swap.Checked?"TUMKNAPP 1 · BAKÅT":"TUMKNAPP 2 · FRAMÅT";
-        pathStep.Text=active?(pathReady?"NÄSTA TRYCK · STEG 2 AV 2":"NÄSTA TRYCK · STEG 1 AV 2"):"MAKROT ÄR PAUSAT";
-        copyStep.Text=active?(copyReady?"NÄSTA TRYCK · STEG 2 AV 2":"NÄSTA TRYCK · STEG 1 AV 2"):"MAKROT ÄR PAUSAT";
-        pathState.Text=!active?"Pausad":pathReady?"Klistra in sökväg":"Kopiera sökväg";
-        copyState.Text=!active?"Pausad":copyReady?"Klistra in · Ctrl+V":"Kopiera · Ctrl+C";
-        pathHint.Text=!active?"Knappen fungerar som vanligt.":pathReady?"Klicka i målet. Tryck samma knapp igen.":"Markera sökvägstext eller en kopierbar fil.";
-        copyHint.Text=!active?"Knappen fungerar som vanligt.":copyReady?"Klicka där du vill klistra in.":"Markera text eller filer först.";
-        pathState.ForeColor=copyState.ForeColor=active?Blue:Muted;
-        pathCard.BackColor=active && pathReady?Color.FromArgb(237,244,255):Color.White;
-        copyCard.BackColor=active && copyReady?Color.FromArgb(237,244,255):Color.White;
-        tray.Text="TumMakro · "+(active?"aktiv":"pausad");
-    }
+    void UpdateStates() { RefreshStudio(); }
     IntPtr MouseHook(int code,IntPtr msg,IntPtr data) {
-        if(code>=0 && (msg.ToInt64()==0x20b || msg.ToInt64()==0x20c)) {
+        long message=msg.ToInt64();
+        if(code>=0 && (message==0x20b || message==0x20c || message==0x207 || message==0x208)) {
             Native.Mouse m=(Native.Mouse)Marshal.PtrToStructure(data,typeof(Native.Mouse));
-            int b=(int)((m.mouseData>>16)&0xffff); bool down=msg.ToInt64()==0x20b;
-            if(b>=1 && b<=2 && (testing || (m.flags&1)==0)) {
+            int b=(message==0x207 || message==0x208)?3:(int)((m.mouseData>>16)&0xffff);
+            bool down=message==0x20b || message==0x207;
+            if(b>=1 && b<=3 && (testing || (m.flags&1)==0)) {
                 if(!down) { held[b]=false; if(swallowed[b]) { swallowed[b]=false; return (IntPtr)1; } }
                 else if(held[b]) { if(swallowed[b]) return (IntPtr)1; }
                 else {
-                    held[b]=true; swallowed[b]=active;
-                    if(active) { IntPtr foreground=Native.GetForegroundWindow();
-                        try { BeginInvoke((Action)delegate { if(!IsDisposed) Execute(b,foreground); }); } catch(InvalidOperationException) { }
-                        return (IntPtr)1; }
-                    try { BeginInvoke((Action)delegate { if(!IsDisposed) RecordButton(b); }); } catch(InvalidOperationException) { }
+                    held[b]=true; swallowed[b]=active && (b!=3 || wheelEnabled);
+                    if(swallowed[b]) { IntPtr foreground=Native.GetForegroundWindow();
+                        try { BeginInvoke((Action)delegate { if(!IsDisposed) { if(b==3) ExecuteWheel(foreground); else Execute(b,foreground); } }); } catch(InvalidOperationException) { }
+                        return (IntPtr)1;
+                    }
                 }
             }
         }
@@ -259,31 +176,25 @@ sealed class MacroForm : Form {
     protected override void Dispose(bool disposing) {
         active=false;
         if(hook!=IntPtr.Zero) { Native.UnhookWindowsHookEx(hook); hook=IntPtr.Zero; }
-        if(disposing) { if(hookContext!=null) hookContext.ExitThread(); copyTimer.Dispose(); tips.Dispose(); tray.Visible=false; tray.Dispose(); } base.Dispose(disposing);
+        if(disposing) { if(hookContext!=null) hookContext.ExitThread(); DisposeStudio(); copyTimer.Dispose(); tips.Dispose(); tray.Visible=false; tray.Dispose(); } base.Dispose(disposing);
     }
     public void Quit() { quitting=true; Close(); }
     public void SetSwap(bool value) { swap.Checked=value; }
-    public void RenderPreview(string folder) {
-        Directory.CreateDirectory(folder); hooksStarted=true; Show(); Application.DoEvents();
-        using(Bitmap warmup=new Bitmap(Width,Height)) DrawToBitmap(warmup,new Rectangle(0,0,Width,Height));
-        Application.DoEvents();
-        using(Bitmap bitmap=new Bitmap(Width,Height)) { DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height)); bitmap.Save(Path.Combine(folder,"UI-kopiera.png")); }
-        pathReady=true; copyReady=true; UpdateStates(); status.Text="Kopierat. Nästa tryck på samma knapp klistrar in.";
-        using(Bitmap bitmap=new Bitmap(Width,Height)) { DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height)); bitmap.Save(Path.Combine(folder,"UI-klistra-in.png")); }
-        TogglePause();
-        using(Bitmap bitmap=new Bitmap(Width,Height)) { DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height)); bitmap.Save(Path.Combine(folder,"UI-pausad.png")); }
-    }
+    public void RenderPreview(string folder) { RenderStudio(folder); }
 }
 
-static class Program {
+static partial class Program {
     [STAThread] static int Main(string[] args) {
+        if(args.Length>0&&args[0].StartsWith("--self-test")) Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+        if(args.Length>1 && args[0]=="--render-studio") { using(MacroForm preview=new MacroForm(true)) preview.RenderStudio(args[1]); return 0; }
+        if(args.Length>0 && args[0]=="--self-test-studio") return StudioTest(args.Length>1?args[1]:"studio-test.txt");
         if(args.Length>1 && args[0]=="--render-ui") { using(MacroForm preview=new MacroForm(true)) preview.RenderPreview(args[1]); return 0; }
         if(args.Length>0 && args[0]=="--self-test") return SelfTest(args.Length>1?args[1]:"self-test.txt");
         if(args.Length>0 && args[0]=="--self-test-background") return BackgroundTest(args.Length>1?args[1]:"background-test.txt");
         bool background=Array.IndexOf(args,"--background")>=0;
         bool created; using(Mutex mutex=new Mutex(true,"Local\\TumMakro-v1",out created)) {
-            if(!created) { if(!background) MessageBox.Show("TumMakro körs redan. Öppna det via ikonen vid klockan.","TumMakro"); return 0; }
+            if(!created) { if(!background) { try { using(var signal=EventWaitHandle.OpenExisting("Local\\TumMakro.Studio.Open")) signal.Set(); } catch(WaitHandleCannotBeOpenedException) { MessageBox.Show("TumMakro körs redan. Öppna det via ikonen vid klockan.","TumMakro"); } } return 0; }
             using(MacroForm form=new MacroForm(false)) {
                 if(background) { form.StartBackground(); Application.Run(); } else Application.Run(form);
             } return 0;
@@ -291,6 +202,7 @@ static class Program {
     }
     static int BackgroundTest(string file) {
         var report=new List<string>();
+        progressFile=file; File.WriteAllText(file,"Starting background test"+Environment.NewLine);
         try {
             using(MacroForm f=new MacroForm(false)) {
                 f.StartBackground(); Pump(200);
@@ -302,11 +214,12 @@ static class Program {
                 f.Quit();
             }
             File.WriteAllLines(file,report.ToArray()); return 0;
-        } catch(Exception e) { report.Add("FAIL: "+e.Message); File.WriteAllLines(file,report.ToArray()); return 1; }
+        } catch(Exception e) { report.Add("FAIL: "+e); File.WriteAllLines(file,report.ToArray()); return 1; }
     }
     static void Pump(int ms) { DateTime end=DateTime.UtcNow.AddMilliseconds(ms); do { Application.DoEvents(); Thread.Sleep(10); } while(DateTime.UtcNow<end); }
     static void WaitFor(Func<bool> condition) { DateTime end=DateTime.UtcNow.AddSeconds(4); while(!condition() && DateTime.UtcNow<end) Pump(40); }
-    static void Assert(bool value,string name,List<string> report) { if(!value) throw new Exception(name); report.Add("PASS: "+name); }
+    static string progressFile;
+    static void Assert(bool value,string name,List<string> report) { if(!value) throw new Exception(name); report.Add("PASS: "+name); if(progressFile!=null) File.AppendAllText(progressFile,"PASS: "+name+Environment.NewLine); }
     static void PressTestButton(MacroForm form,TextBox box,int button) {
         Pump(150);
         WaitFor(delegate {
@@ -330,7 +243,8 @@ static class Program {
             Assert(MacroForm.PathsFromData(fileData)=="C:\\test\\a.txt"+Environment.NewLine+@"\\server\share\b.txt","Copied file paths take priority over file display text",report);
             using(MacroForm f=new MacroForm(true)) {
                 f.SetSwap(false); TextBox box=new TextBox { Multiline=true,Text="TumMakro copy test",Bounds=new Rectangle(24,65,530,42) }; f.Controls.Add(box); box.BringToFront();
-                bool copyFiles=false;
+                bool copyFiles=false; var keyTrace=new List<string>();
+                box.KeyDown+=delegate(object sender,KeyEventArgs key) { keyTrace.Add(key.KeyCode+":"+key.Modifiers); };
                 box.KeyDown+=delegate(object s,KeyEventArgs e) { if(copyFiles && e.Control && e.KeyCode==Keys.C) { var files=new System.Collections.Specialized.StringCollection(); files.Add("C:\\TumMakro test\\sample.txt"); files.Add(@"\\server\share\other.txt"); Clipboard.SetFileDropList(files); e.SuppressKeyPress=true; } };
                 f.TopMost=true; f.Show(); Pump(100);
                 WaitFor(delegate { Native.FocusTestWindow(f.Handle); box.Focus(); return Native.GetForegroundWindow()==f.Handle && box.Focused; });
@@ -340,7 +254,7 @@ static class Program {
                 WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="TumMakro copy test"; });
                 Assert(f.CopyReady && Clipboard.GetText()=="TumMakro copy test","Mouse button 2 sends Ctrl+C and arms paste",report);
                 box.Clear(); PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="TumMakro copy test"; });
-                Assert(!f.CopyReady && box.Text=="TumMakro copy test","Second mouse button 2 press sends Ctrl+V and resets",report);
+                Assert(!f.CopyReady && box.Text=="TumMakro copy test","Second mouse button 2 press sends Ctrl+V and resets; "+f.Status+"; focused="+box.Focused+"; length="+box.TextLength,report);
                 box.Text="/home/test/my file.txt"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; }); Assert(f.PathReady,"Path button copies selected text in an ordinary text window, outside Explorer",report);
                 Clipboard.SetText("intervening clipboard content"); box.Clear(); PressTestButton(f,box,1); WaitFor(delegate { return box.Text=="/home/test/my file.txt"; });
                 Assert(!f.PathReady && box.Text=="/home/test/my file.txt","Path paste restores selected text after unrelated clipboard copying",report);
@@ -349,7 +263,7 @@ static class Program {
                 Assert(f.PathReady && f.SavedPathForTest==capturedFiles,"Path button captures copied file-drop data from a non-Explorer window",report);
                 copyFiles=false; box.Clear(); PressTestButton(f,box,1); string expectedFiles="C:\\TumMakro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
                 WaitFor(delegate { return box.Text==expectedFiles; });
-                Assert(!f.PathReady && box.Text==expectedFiles,"Multiple copied files paste as path text, including network paths: "+f.Status+"; focused="+box.Focused+"; text length="+box.TextLength,report);
+                Assert(!f.PathReady && box.Text==expectedFiles,"Multiple copied files paste as path text, including network paths: "+f.Status+"; focused="+box.Focused+"; text length="+box.TextLength+"; clipboard length="+(Clipboard.ContainsText()?Clipboard.GetText().Length:0)+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 f.TogglePause(); box.SelectAll(); PressTestButton(f,box,2); Pump(150);
                 Assert(!f.CopyReady && !f.Active,"Paused buttons do not run macros",report);
                 f.TogglePause(); f.SetSwap(true); box.Text="swapped copy"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="swapped copy"; });
