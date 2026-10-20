@@ -1,4 +1,4 @@
-# Tumacro 1.0.1
+﻿# Tumacro 1.0.2
 
 A small Windows app for two mouse thumb buttons, the wheel click, and custom keyboard shortcuts. Select button 1, 2, or 3 in the mouse diagram to view or change its function. Choose Svenska or English in the header to switch languages. Tumacro saves your choice.
 
@@ -12,7 +12,9 @@ Path copying works outside File Explorer. The source application must be able to
 
 ## Keyboard macros
 
-Use the add keyboard macro button. Enter a name, then press the trigger shortcut and the shortcut to send in their respective fields. Backspace clears a shortcut field. A trigger requires Ctrl, Alt, or Win together with another key. Release the trigger keys so Tumacro can send the assigned shortcut to the active application.
+Use the add keyboard macro button and enter a name. Click **Record** for the trigger, press one key combination, then release all keys. Repeat for the shortcut to send, then click **Save macro**. The selected combination appears above each Record button. Use **Clear** to remove it, or **Esc** to cancel a recording and keep the previous value. A trigger requires Ctrl, Alt, or Win together with another key. Release the trigger keys so Tumacro can send the assigned shortcut to the active application.
+
+While recording, Tumacro captures Tab, Alt+Tab, and Windows-key combinations without running them. It suspends its registered keyboard macros until recording ends. Moving focus to another field or leaving the window cancels recording. Record one simultaneous key combination per field; timed sequences and Windows secure shortcuts such as Ctrl+Alt+Delete are not supported.
 
 Tumacro checks for duplicate triggers and shortcuts that another application has already registered. A macro cannot send a shortcut that triggers one of your own macros. Assigning a saved macro to the wheel copies its action, so deleting the keyboard macro keeps the wheel assignment intact.
 
@@ -42,4 +44,4 @@ Run `Build.ps1` in PowerShell. The source code and Windows manifest are in `src`
 
 ## Version history
 
-Tumacro continues the application previously named TumMakro Studio. Version 1.0.1 introduces a mouse icon with two highlighted thumb controls. Its GitHub tag is `tumacro-v1.0.1`. Earlier releases retain their original names and tags. On first launch, Tumacro copies existing settings from `%LOCALAPPDATA%\TumMakro` when no Tumacro settings exist. The installer replaces the old startup entry.
+Tumacro continues the application previously named TumMakro Studio. The 1.0.2 patch replaces focus-based shortcut fields with explicit recording controls, separates the keyboard macro editor from wheel settings, and fixes saved wheel-selection state. Final copy/paste integration validation is pending because the Windows test session could not activate its target window. Version 1.0.1 introduced the mouse icon with two highlighted thumb controls. Earlier releases retain their original names and tags. On first launch, Tumacro copies existing settings from `%LOCALAPPDATA%\TumMakro` when no Tumacro settings exist. The installer replaces the old startup entry.

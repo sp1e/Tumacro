@@ -1,10 +1,29 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
 static class UiText {
     public static readonly Dictionary<string,string> Pairs=new Dictionary<string,string>(StringComparer.Ordinal) {
+        {"Spela in","Record"},
+        {"Rensa","Clear"},
+        {"Avbryt inspelning","Cancel recording"},
+        {"Ingen kombination vald.","No shortcut selected."},
+        {"Klicka på Spela in för att ändra.","Click Record to change the shortcut."},
+        {"Tryck kombinationen och släpp tangenterna. Esc avbryter.","Press the shortcut, then release the keys. Esc cancels."},
+        {"Spela in tangentkombination","Record shortcut"},
+        {"Rensa tangentkombination","Clear shortcut"},
+        {"Släpp tangenterna och klicka på Spela in igen.","Release the keys, then click Record again."},
+        {"Inspelningen kunde inte starta. Försök igen.","Recording could not start. Try again."},
+        {"Inspelat. Spara för att använda kombinationen.","Recorded. Save to use the shortcut."},
+        {"Inspelningen avbröts. Tidigare val finns kvar.","Recording cancelled. Your previous choice is unchanged."},
+        {"Spela in en kombination för aktivering och en som makrot ska skicka.","Record a trigger shortcut and the shortcut the macro should send."},
+        {"1. Aktiveras med","1. Trigger shortcut"},
+        {"2. Skickar tangentkombination","2. Shortcut to send"},
+        {"Tangentkombination att skicka","Shortcut to send"},
+        {"Ge makrot ett namn innan du sparar.","Enter a name before saving the macro."},
+        {"Spela in genvägen som ska aktivera makrot.","Record the shortcut that should trigger the macro."},
+        {"Spela in kombinationen som makrot ska skicka.","Record the shortcut the macro should send."},
         {"Tumacro körs redan. Öppna det via ikonen vid klockan.","Tumacro is already running. Open it from the system tray."},
         {"Tema","Theme"},
         {"Språk","Language"},
@@ -97,7 +116,7 @@ static class UiText {
         {"Kopiera · Ctrl+C","Copy · Ctrl+C"},
         {"aktiv","active"},
         {"pausad","paused"},
-        {"Tumacro Studio 1.0.1 · hjälp","Tumacro 1.0.1 · help"},
+        {"Tumacro Studio 1.0.2 · hjälp","Tumacro 1.0.1 · help"},
         {"Kunde inte ansluta tumknapparna. Starta om programmet.","Could not connect the thumb buttons. Restart the app."},
         {"Start med Windows: inte inställd.","Windows startup: not configured."},
         {"Start med Windows: inställd. Programmet öppnas vid klockan.","Windows startup: configured. The app starts in the system tray."},
@@ -125,7 +144,7 @@ static class UiText {
         {"Inställningarna kunde inte läsas. Spara nya inställningar för att ersätta den skadade filen.","Could not read settings. Save new settings to replace the damaged file."},
         {"Ett ogiltigt tangentmakro har stängts av. Kontrollera dina inställningar.","An invalid keyboard macro was disabled. Check your settings."},
         {"Hjulmakrot var ogiltigt och stängdes av.","The wheel macro was invalid and has been disabled."},
-        {"TUMKNAPPAR 1 OCH 2\nMarkera innehållet och tryck för att kopiera. Klicka i målet och tryck samma knapp igen för att klistra in. Sökvägsknappen sparar text eller kopierade filers sökvägar, även utanför Utforskaren. Källprogrammet måste stödja kopiering av text eller filinformation.\n\nMUSHJUL 3\nKlicka på 3 i musbilden, välj funktion och spara. Makrot körs när du trycker ned hjulet i målprogrammet. Rullning uppåt/nedåt påverkas inte. Ett tilldelat tangentmakro kopieras till hjulet.\n\nTANGENTMAKRON\nLägg till namn, aktivering och kombination. Tryck genvägen i fältet; Backsteg rensar. Aktiveringen behöver Ctrl, Alt eller Win. Släpp genvägens tangenter efter trycket. Genvägar som redan används kan inte registreras.\n\nBAKGRUND OCH PAUS\nPausa släpper musknappar och tangentgenvägar till Windows. Dölj och kryss behåller programmet vid klockan. Högerklicka på ikonen och välj Avsluta för att stänga.\n\nRazer Synapse: tumknapparna ska vara Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att Tumacro startas med samma behörighet.","THUMB BUTTONS 1 AND 2\nSelect content and press a thumb button to copy. Click the target and press the same button again to paste. The path button saves selected text or paths from copied files, including applications outside File Explorer. The source application must support copying text or file data.\n\nWHEEL BUTTON 3\nSelect 3 in the mouse diagram, choose an action, and save. Press the wheel in the target application to run the macro. Scrolling up and down keeps its usual behavior. Assigning a saved keyboard macro copies its action to the wheel.\n\nKEYBOARD MACROS\nEnter a name, trigger, and action. Press the shortcut in each field; Backspace clears it. The trigger needs Ctrl, Alt, or Win. Release the trigger keys after pressing the shortcut. Shortcuts that another application has registered cannot be used as triggers.\n\nBACKGROUND AND PAUSE\nPausing restores normal mouse buttons and keyboard shortcuts. Hide to tray or close the window to keep the app running. Right-click the tray icon and choose Exit to quit.\n\nLANGUAGE\nChoose Svenska or English in the header. Tumacro saves your language choice.\n\nRazer Synapse: assign the thumb buttons to Back and Forward. Applications running as administrator may require Tumacro to run with the same privileges."}
+        {"TUMKNAPPAR 1 OCH 2\nMarkera innehållet och tryck för att kopiera. Klicka i målet och tryck samma knapp igen för att klistra in. Sökvägsknappen sparar text eller kopierade filers sökvägar, även utanför Utforskaren. Källprogrammet måste stödja kopiering av text eller filinformation.\n\nMUSHJUL 3\nKlicka på 3 i musbilden, välj funktion och spara. Makrot körs när du trycker ned hjulet i målprogrammet. Rullning uppåt/nedåt påverkas inte. Ett tilldelat tangentmakro kopieras till hjulet.\n\nTANGENTMAKRON\nLägg till namn, aktivering och kombination. Klicka på Spela in, tryck en kombination och släpp tangenterna. Rensa tar bort valet. Esc avbryter inspelningen. Tab kan spelas in. Ctrl+Alt+Delete och andra skyddade systemgenvägar kan inte spelas in. Aktiveringen behöver Ctrl, Alt eller Win. Släpp genvägens tangenter efter trycket. Genvägar som redan används kan inte registreras.\n\nBAKGRUND OCH PAUS\nPausa släpper musknappar och tangentgenvägar till Windows. Dölj och kryss behåller programmet vid klockan. Högerklicka på ikonen och välj Avsluta för att stänga.\n\nRazer Synapse: tumknapparna ska vara Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att Tumacro startas med samma behörighet.","THUMB BUTTONS 1 AND 2\nSelect content and press a thumb button to copy. Click the target and press the same button again to paste. The path button saves selected text or paths from copied files, including applications outside File Explorer. The source application must support copying text or file data.\n\nWHEEL BUTTON 3\nSelect 3 in the mouse diagram, choose an action, and save. Press the wheel in the target application to run the macro. Scrolling up and down keeps its usual behavior. Assigning a saved keyboard macro copies its action to the wheel.\n\nKEYBOARD MACROS\nEnter a name, trigger, and action. Click Record, press one shortcut, and release the keys. Use Clear to remove it. Esc cancels recording. Tab can be recorded. Windows reserves Ctrl+Alt+Delete and other secure shortcuts. The trigger needs Ctrl, Alt, or Win. Release the trigger keys after pressing the shortcut. Shortcuts that another application has registered cannot be used as triggers.\n\nBACKGROUND AND PAUSE\nPausing restores normal mouse buttons and keyboard shortcuts. Hide to tray or close the window to keep the app running. Right-click the tray icon and choose Exit to quit.\n\nLANGUAGE\nChoose Svenska or English in the header. Tumacro saves your language choice.\n\nRazer Synapse: assign the thumb buttons to Back and Forward. Applications running as administrator may require Tumacro to run with the same privileges."}
     };
     public static string Translate(string value,string language) { string translated; return language=="en"&&Pairs.TryGetValue(value,out translated)?translated:value; }
     public static string StartupLanguage() { try { return StudioSettings.Read(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Tumacro","settings.xml")).Language; } catch { return "sv"; } }

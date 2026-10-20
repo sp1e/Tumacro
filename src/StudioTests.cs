@@ -6,25 +6,32 @@ using System.Windows.Forms;
 static partial class Native {
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr icon);
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window,IntPtr context,uint flags);
+    public static void TestKey(Keys key,bool up) { var input=new[]{Key((int)key,up)}; SendInput(1,input,System.Runtime.InteropServices.Marshal.SizeOf(typeof(Input))); }
 }
 sealed partial class MacroForm {
     public bool ConfigureWheelForTest(string value) { Chord chord; if(!Chord.Parse(value,out chord)) return false; settings.Wheel=chord.Text; wheelEnabled=true; return true; }
     public bool ConfigureHotkeyForTest(string trigger,string output) { settings.Macros.Add(new KeyMacro {Name="Test",Trigger=trigger,Action=output}); return RefreshHotkeys(); }
     public void SelectForTest(int value) { selected=value; BuildStudioView(); }
     void KeyClickForTest(string name,Action<int> pump) { FocusStudioControl(name); Native.FocusTestWindow(Handle); var control=FindStudioControl(name); if(control==null||!control.Focused) throw new Exception("Keyboard focus missing: "+name); Native.SendChord(new Chord {Key=Keys.Space,Text="Mellanslag"}); pump(180); }
+    void RecordForTest(ShortcutBox recorder,Chord chord,Action<int> pump) {
+        Native.FocusTestWindow(Handle); recorder.StartRecording();
+        if(!recorder.Recording) throw new Exception("Explicit recording did not start: "+chord.Text);
+        Native.SendChord(chord); pump(160);
+        if(recorder.Recording) throw new Exception("Recording did not finish after key release: "+chord.Text);
+    }
     public void ExerciseCrudForTest(Action<bool,string> assert,Action<int> pump) {
         KeyClickForTest("add-macro",pump); assert(macroName.Focused,"New macro receives keyboard focus"); macroName.Text="Kommandopalett";
         Chord trigger,action; Chord.Parse("Ctrl + Alt + F9",out trigger); Chord.Parse("Ctrl + Shift + P",out action);
-        macroTrigger.Focus(); Native.SendChord(trigger); pump(180); macroAction.Focus(); Native.SendChord(action); pump(180);
+        RecordForTest(macroTrigger,trigger,pump); RecordForTest(macroAction,action,pump);
         assert(macroTrigger.Text==trigger.Text&&macroAction.Text==action.Text,"Keyboard shortcut fields capture native combinations");
         KeyClickForTest("save-macro",pump); assert(settings.Macros.Count==1&&FindStudioControl("macro-0").Focused,"Keyboard save persists macro and focuses saved row");
-        KeyClickForTest("macro-0",pump); macroTrigger.Focus(); int before=TestChordDispatchCount; Native.SendChord(trigger); pump(250);
+        KeyClickForTest("macro-0",pump); int before=TestChordDispatchCount; RecordForTest(macroTrigger,trigger,pump);
         assert(macroTrigger.Text==trigger.Text&&TestChordDispatchCount==before,"Existing registered trigger is recorded without dispatch");
-        macroAction.Focus(); Native.SendChord(trigger); pump(180); assert(macroAction.Text==trigger.Text&&TestChordDispatchCount==before,"Output recorder also blocks registered macro dispatch");
-        CaptureStudioDraft(); selected=2; BuildStudioView(); wheelChoice.SelectedIndex=1; wheelAction.Focus(); Native.SendChord(trigger); pump(180);
+        RecordForTest(macroAction,trigger,pump); assert(macroAction.Text==trigger.Text&&TestChordDispatchCount==before,"Output recorder also blocks registered macro dispatch");
+        KeyClickForTest("cancel-macro",pump); assert(FindStudioControl("macro-0").Focused,"Cancel returns focus to original macro row");
+        CaptureStudioDraft(); selected=2; BuildStudioView(); wheelChoice.SelectedIndex=1; RecordForTest(wheelAction,trigger,pump);
         assert(wheelAction.Text==trigger.Text&&TestChordDispatchCount==before,"Wheel recorder blocks registered macro dispatch");
         wheelChoice.SelectedIndex=2; KeyClickForTest("save-wheel",pump); assert(settings.Wheel==action.Text&&wheelChoice.Focused,"Assign saved macro to wheel and retain selector focus");
-        KeyClickForTest("cancel-macro",pump); assert(FindStudioControl("macro-0").Focused,"Cancel returns focus to original macro row");
         var target=new TextBox {Bounds=new Rectangle(250,70,450,36)}; Controls.Add(target); target.BringToFront(); bool received=false; target.KeyDown+=delegate(object sender,KeyEventArgs e) { if(e.Control&&e.Shift&&e.KeyCode==Keys.P) {received=true;e.SuppressKeyPress=true;} }; target.Focus(); Native.FocusTestWindow(Handle); Native.SendChord(trigger); pump(500);
         assert(received&&TestChordDispatchCount==before+1,"Normal global activation works after recorder leaves focus"); target.Dispose();
         TogglePause(); assert(hotkeys.Count==0&&!active,"Pause unregisters keyboard macros"); TogglePause(); assert(hotkeys.Count==1&&active,"Resume restores keyboard macro registration");
@@ -32,6 +39,66 @@ sealed partial class MacroForm {
         KeyClickForTest("macro-0",pump); KeyClickForTest("delete-macro",pump); assert(settings.Macros.Count==0&&FindStudioControl("add-macro").Focused,"Keyboard delete returns focus to add control"); assert(wheelEnabled&&settings.Wheel==action.Text,"Deleting source macro preserves copied wheel assignment");
         KeyClickForTest("reset-wheel",pump); assert(!wheelEnabled&&wheelChoice.Focused,"Wheel reset restores middle click and selector focus");
         Size=MinimumSize; Application.DoEvents(); assert(sidebar.Controls["all-functions"].Bottom<=sidebar.ClientSize.Height&&footerPanel.Bottom<=ClientSize.Height,"Minimum window keeps sidebar action and footer reachable");
+    }
+    public void ExerciseRecorderForTest(Action<bool,string> assert,Action<int> pump) {
+        selected=2; BuildStudioView(); OpenMacro(-1); macroName.Text="Recorder regression";
+        assert(wheelAction==null&&wheelChoice==null&&macroTrigger!=null&&macroAction!=null,"Macro editor is separate from wheel settings");
+        macroAction.FocusRecordButton(); Native.SendChord(new Chord {Key=Keys.Space}); pump(80);
+        assert(macroAction.Recording&&!FindStudioControl("save-macro").Enabled,"Keyboard activation starts recording and disables Save until completion");
+        Native.TestKey(Keys.ControlKey,false); Native.TestKey(Keys.K,false); pump(60); Native.TestKey(Keys.K,true); pump(60);
+        assert(macroAction.Recording,"Recording waits for the modifier to be released"); Native.TestKey(Keys.ControlKey,true); pump(100);
+        assert(!macroAction.Recording&&macroAction.Text=="Ctrl + K"&&FindStudioControl("save-macro").Enabled,"Releasing the final modifier completes recording and enables Save");
+        string preserved=macroAction.Text; macroAction.StartRecording();
+        Native.TestKey(Keys.ControlKey,false); Native.TestKey(Keys.K,false); Native.TestKey(Keys.C,false); Native.TestKey(Keys.C,true); Native.TestKey(Keys.K,true); Native.TestKey(Keys.ControlKey,true); pump(100);
+        assert(!macroAction.Recording&&macroAction.Text==preserved,"A multi-key sequence does not silently save a partial chord");
+        Size=MinimumSize; pump(80);
+        var save=FindStudioControl("save-macro");
+        Rectangle viewport=contentScroll.RectangleToScreen(contentScroll.ClientRectangle);
+        assert(viewport.Contains(save.RectangleToScreen(save.ClientRectangle))&&viewport.Contains(macroTrigger.RectangleToScreen(macroTrigger.ClientRectangle))&&viewport.Contains(macroAction.RectangleToScreen(macroAction.ClientRectangle)),"Both recorder fields and Save fit in the minimum window");
+        int before=TestChordDispatchCount;
+        foreach(string shortcut in new[]{"Ctrl + Tab","Tab","Shift + Tab","Back","Delete","Enter","F5","Alt + Tab","Win + E","Ctrl + C","Ctrl + Shift + P","Ctrl + Alt + F9"}) {
+            Chord chord; Chord.Parse(shortcut,out chord); IntPtr foreground=Handle;
+            RecordForTest(macroAction,chord,pump);
+            assert(macroAction.Text==chord.Text&&Native.GetForegroundWindow()==foreground&&TestChordDispatchCount==before,"Explicit recording captures and suppresses "+shortcut);
+        }
+        string previous=macroAction.Text; macroAction.StartRecording(); Native.SendChord(new Chord {Key=Keys.Escape}); pump(160);
+        assert(!macroAction.Recording&&macroAction.Text==previous,"Escape cancels without overwriting the previous shortcut");
+        Chord trigger,action; Chord.Parse("Ctrl + Alt + F9",out trigger); Chord.Parse("Ctrl + Shift + P",out action);
+        RecordForTest(macroTrigger,trigger,pump); RecordForTest(macroAction,action,pump); KeyClickForTest("save-macro",pump);
+        KeyClickForTest("macro-0",pump); macroAction.StartRecording();
+        assert(hotkeys.Count==0&&recordingShortcut,"Recording suspends all registered macro triggers");
+        Native.SendChord(trigger); pump(180);
+        assert(macroAction.Text==trigger.Text&&hotkeys.Count==1&&TestChordDispatchCount==before,"Recording an existing trigger restores registration without executing it");
+        macroTrigger.StartRecording(); macroAction.StartRecording();
+        assert(!macroTrigger.Recording&&macroAction.Recording&&recordingShortcut,"Only one recorder can listen at a time");
+        macroName.Focus(); pump(80);
+        assert(!macroAction.Recording&&!recordingShortcut&&hotkeys.Count==1,"Moving focus to the name field cancels recording");
+        previous=macroAction.Text; macroAction.StartRecording();
+        using(var other=new Form {TopMost=true,Size=new Size(250,150)}) {
+            other.Show(); Native.FocusTestWindow(other.Handle); pump(150);
+            assert(!macroAction.Recording&&!recordingShortcut&&macroAction.Text==previous&&hotkeys.Count==1,"Changing windows cancels capture and restores global shortcuts"); other.Close();
+        }
+        Native.FocusTestWindow(Handle); KeyClickForTest("cancel-macro",pump);
+        selected=2; BuildStudioView(); wheelChoice.SelectedIndex=2; CaptureStudioDraft();
+        settings.Language="en"; BuildStudioView();
+        assert(wheelChoice.SelectedIndex==2&&wheelAction.Text==action.Text,"Rebuilding the view preserves the selected saved wheel macro");
+        RecordForTest(wheelAction,new Chord {Key=Keys.Tab,Text="Tab"},pump);
+        assert(wheelChoice.SelectedIndex==1,"Recording a different wheel shortcut switches to a custom assignment");
+        KeyClickForTest("save-wheel",pump); assert(settings.Wheel=="Tab"&&settings.WheelName=="","Saving a changed wheel recording clears the old macro name");
+        using(var holder=new Form()) {
+            bool registered=Native.RegisterHotKey(holder.Handle,909,3|0x4000,(uint)Keys.F10);
+            assert(registered,"Controlled conflicting shortcut registered by another window");
+            try {
+                OpenMacro(-1); macroName.Text="Conflict"; macroTrigger.Text="Ctrl + Alt + F10"; macroAction.Text="Ctrl + P"; SaveMacro();
+                assert(settings.Macros.Count==1&&editing==-1&&hotkeys.Count==1,"A registration conflict retains the draft and restores existing macros");
+                KeyClickForTest("cancel-macro",pump);
+            } finally { Native.UnregisterHotKey(holder.Handle,909); }
+        }
+        selected=2; BuildStudioView();
+        wheelAction.StartRecording(); wheelAction.Dispose();
+        assert(!recordingShortcut&&hotkeys.Count==1,"Disposing an active recorder removes its hook and restores shortcuts");
+        BuildStudioView(); settings.Language="sv"; wheelAction.StartRecording();
+        assert(wheelAction.Recording,"Application can close with an active recording");
     }
 }
 static partial class Program {
@@ -65,6 +132,7 @@ static partial class Program {
             using(var form=new MacroForm(true)) { form.SelectForTest(2); Assert(!form.IsDisposed,"Wheel configuration view builds",report); form.SelectForTest(0); form.SelectForTest(1); Assert(!form.IsDisposed,"Both thumb views build",report); }
             using(var form=new MacroForm(true)) { form.TopMost=true; form.Show(); Pump(100); Native.FocusTestWindow(form.Handle); form.ExerciseLanguageForTest(delegate(bool value,string name) { Assert(value,name,report); },Pump); form.Quit(); }
             using(var form=new MacroForm(true)) { form.TopMost=true; form.Show(); Pump(100); Native.FocusTestWindow(form.Handle); form.ExerciseCrudForTest(delegate(bool value,string name) { Assert(value,name,report); },Pump); form.Quit(); }
+            using(var form=new MacroForm(true)) { form.TopMost=true; form.Show(); Pump(100); Native.FocusTestWindow(form.Handle); form.ExerciseRecorderForTest(delegate(bool value,string name) { Assert(value,name,report); },Pump); form.Quit(); }
             File.WriteAllLines(file,report.ToArray()); return 0;
         } catch(Exception error) { report.Add("FAIL: "+error); File.WriteAllLines(file,report.ToArray()); return 1; }
     }

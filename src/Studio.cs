@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -12,8 +12,8 @@ using System.Threading;
 [assembly: AssemblyTitle("Tumacro")]
 [assembly: AssemblyDescription("Mouse macros and keyboard shortcuts")]
 [assembly: AssemblyProduct("Tumacro")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
 
 public class KeyMacro { public string Name=""; public string Trigger=""; public string Action=""; }
 public class StudioSettings {
@@ -57,7 +57,7 @@ sealed class Chord {
             if(part.Length==1 && char.IsDigit(part[0])) parsed=Keys.D0+(part[0]-'0');
             else if(part.Equals("Mellanslag",StringComparison.OrdinalIgnoreCase)) parsed=Keys.Space;
             else if(!Enum.TryParse<Keys>(part,true,out parsed)) return false;
-            if(key!=Keys.None || parsed==Keys.None || parsed==Keys.ControlKey || parsed==Keys.ShiftKey || parsed==Keys.Menu || parsed==Keys.LWin || parsed==Keys.RWin || (int)parsed>255) return false;
+            if(key!=Keys.None || parsed==Keys.None || parsed==Keys.ControlKey || parsed==Keys.ShiftKey || parsed==Keys.Menu || parsed==Keys.LWin || parsed==Keys.RWin || (int)parsed>254 || (int)parsed<8 || !Enum.IsDefined(typeof(Keys),parsed) || ((int)parsed>=160&&(int)parsed<=165)) return false;
             key=parsed;
         }
         if(key==Keys.None) return false;
@@ -91,17 +91,6 @@ sealed class ChoiceBox : Button {
     protected override void OnPaint(PaintEventArgs e) { base.OnPaint(e); using(var pen=new Pen(ForeColor,1.5f)) { int x=Width-16,y=Height/2; e.Graphics.DrawLines(pen,new[]{new Point(x-3,y-2),new Point(x,y+1),new Point(x+3,y-2)}); } }
     protected override void Dispose(bool disposing) { if(disposing&&choices!=null) choices.Dispose(); base.Dispose(disposing); }
 }
-sealed class ShortcutBox : TextBox {
-    public ShortcutBox() { ReadOnly=true; ShortcutsEnabled=false; AccessibleDescription="Tryck tangentkombinationen. Backsteg rensar fältet."; }
-    protected override void OnKeyDown(KeyEventArgs e) {
-        if(e.KeyCode==Keys.Tab) { base.OnKeyDown(e); return; }
-        e.SuppressKeyPress=true;
-        if(e.KeyCode==Keys.Back && e.Modifiers==Keys.None) { Clear(); return; }
-        if(e.KeyCode==Keys.ControlKey || e.KeyCode==Keys.ShiftKey || e.KeyCode==Keys.Menu || e.KeyCode==Keys.LWin || e.KeyCode==Keys.RWin) return;
-        string value=(e.Control?"Ctrl + ":"")+(e.Alt?"Alt + ":"")+(e.Shift?"Shift + ":"")+(((Native.GetAsyncKeyState(0x5b)|Native.GetAsyncKeyState(0x5c))&0x8000)!=0?"Win + ":"")+e.KeyCode;
-        Chord chord; if(Chord.Parse(value,out chord)) Text=chord.Text;
-    }
-}
 sealed class MouseDiagram : Panel {
     public readonly Button[] Buttons=new Button[3]; public int Selected=-1; public bool Dark; public Action<int> SelectButton;
     public MouseDiagram() {
@@ -121,7 +110,7 @@ sealed partial class MacroForm {
     StudioSettings settings; readonly List<int> hotkeys=new List<int>(); volatile bool wheelEnabled;
     string settingsFile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Tumacro","settings.xml");
     Panel header,footerPanel,sidebar,contentScroll; FlowLayoutPanel sections; MouseDiagram diagram; Label viewTitle,startupLabel; ChoiceBox themes,languages;
-    Color page,surface,text,muted,accent,edge,soft; bool dark,refreshing; int selected=-1,editing=int.MinValue;
+    Color page,surface,text,muted,accent,edge,soft; bool dark,refreshing,rebuilding; volatile bool recordingShortcut; int selected=-1,editing=int.MinValue;
     TextBox macroName; ShortcutBox macroTrigger,macroAction,wheelAction; ChoiceBox wheelChoice;
     string draftName="",draftTrigger="",draftAction="",draftWheel; int draftWheelChoice=-1;
     readonly System.Windows.Forms.Timer chordTimer=new System.Windows.Forms.Timer(); Chord pendingChord; IntPtr pendingTarget; int chordWait; Keys pendingTrigger;
@@ -143,11 +132,11 @@ sealed partial class MacroForm {
         Chord wheel; if(!string.IsNullOrEmpty(settings.Wheel)&&!Chord.Parse(settings.Wheel,out wheel)) { settings.Wheel=""; loadWarning=L("Hjulmakrot var ogiltigt och stängdes av."); }
         wheelEnabled=!string.IsNullOrEmpty(settings.Wheel); swap.Checked=settings.Swap;
         if(settings.Language!="en") settings.Language="sv";
-        Text="Tumacro · 1.0.1"; Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi; StartPosition=FormStartPosition.CenterScreen; MinimumSize=new Size(850,720); ClientSize=new Size(980,Math.Min(800,Screen.PrimaryScreen.WorkingArea.Height-90));
+        Text="Tumacro · 1.0.2"; Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi; StartPosition=FormStartPosition.CenterScreen; MinimumSize=new Size(850,720); ClientSize=new Size(980,Math.Min(800,Screen.PrimaryScreen.WorkingArea.Height-90));
         Icon=MakeIcon();
         header=new Panel {Dock=DockStyle.Top,Height=66,Padding=new Padding(22,12,18,12)}; Controls.Add(header);
         var brand=LabelOf("Tumacro",19,true); brand.Location=new Point(24,15); header.Controls.Add(brand);
-        var version=LabelOf("STUDIO 1.0.1",9,false); version.Location=new Point(220,28); header.Controls.Add(version);
+        var version=LabelOf("STUDIO 1.0.2",9,false); version.Location=new Point(220,28); header.Controls.Add(version);
         activity.AutoSize=true; activity.Font=new Font(Font,FontStyle.Bold); activity.Anchor=AnchorStyles.Top|AnchorStyles.Right; header.Controls.Add(activity);
         themes=new ChoiceBox {FlatStyle=FlatStyle.Flat,Width=190,Anchor=AnchorStyles.Top|AnchorStyles.Right,AccessibleName=L("Tema")}; themes.Items.AddRange(new object[]{L("Följ Windows"),L("Ljust läge"),L("Mörkt läge")}); themes.SelectedIndex=settings.Theme=="dark"?2:settings.Theme=="light"?1:0; header.Controls.Add(themes);
         languages=new ChoiceBox {Name="language-choice",FlatStyle=FlatStyle.Flat,Width=130,Anchor=AnchorStyles.Top|AnchorStyles.Right}; languages.Items.AddRange(new object[]{"Svenska","English"}); languages.SelectedIndex=settings.Language=="en"?1:0; header.Controls.Add(languages);
@@ -189,17 +178,31 @@ sealed partial class MacroForm {
     void StyleStudioButton(Button button,bool primary) { button.AutoSize=true; button.MinimumSize=new Size(80,42); button.Padding=new Padding(12,4,12,4); button.Margin=new Padding(0,0,8,8); button.FlatStyle=FlatStyle.Flat; button.Tag=primary?"primary":"button"; button.Cursor=Cursors.Hand; button.UseVisualStyleBackColor=false; }
     Button AddButton(Control parent,string label,Action action,bool primary) { var button=new Button {Text=label}; StyleStudioButton(button,primary); button.Click+=delegate { action(); }; parent.Controls.Add(button); return button; }
     void AddText(string value,float size,bool bold) { var label=LabelOf(value,size,bold); sections.Controls.Add(label); }
-    void SizeSections(Panel scroll) { if(sections==null) return; int width=Math.Max(360,scroll.ClientSize.Width-scroll.Padding.Horizontal-SystemInformation.VerticalScrollBarWidth); foreach(Control child in sections.Controls) { if(child is Label || child is Button&&child.AutoSize) child.MaximumSize=new Size(width,0); if(child is Panel || child is TextBox || child is ChoiceBox || child is CheckBox) child.Width=width; } }
+    void SizeSections(Panel scroll) { if(sections==null) return; int width=Math.Max(360,scroll.ClientSize.Width-scroll.Padding.Horizontal-SystemInformation.VerticalScrollBarWidth); foreach(Control child in sections.Controls) { if(child is Label || child is Button&&child.AutoSize) child.MaximumSize=new Size(width,0); if(child is Panel || child is TextBox || child is ShortcutBox || child is ChoiceBox || child is CheckBox) child.Width=width; } }
     Control FindStudioControl(string name) { foreach(Control control in Descendants(sections)) if(control.Name==name) return control; return null; }
     static IEnumerable<Control> Descendants(Control parent) { foreach(Control control in parent.Controls) { yield return control; foreach(Control nested in Descendants(control)) yield return nested; } }
     void FocusStudioControl(string name) { var control=FindStudioControl(name); if(control!=null) { control.Focus(); contentScroll.ScrollControlIntoView(control); } }
-    void PrepareRecorder(ShortcutBox box) { box.Enter+=delegate { pendingChord=null; chordTimer.Stop(); }; }
-    ShortcutBox FocusedRecorder() { if(Native.GetForegroundWindow()!=Handle) return null; foreach(var recorder in new[]{macroTrigger,macroAction,wheelAction}) if(recorder!=null&&!recorder.IsDisposed&&recorder.Focused) return recorder; return null; }
+    void PrepareRecorder(ShortcutBox box) {
+        box.SetLanguage(settings.Language);
+        box.RecordingChanged+=delegate {
+            if(box.Recording) foreach(var other in new[]{macroTrigger,macroAction,wheelAction}) if(other!=null&&other!=box) other.CancelRecording();
+            recordingShortcut=(macroTrigger!=null&&macroTrigger.Recording)||(macroAction!=null&&macroAction.Recording)||(wheelAction!=null&&wheelAction.Recording);
+            foreach(string name in new[]{"save-macro","save-wheel"}) { var save=FindStudioControl(name); if(save!=null) save.Enabled=!recordingShortcut; }
+            pendingChord=null; chordTimer.Stop();
+            if(!rebuilding&&!IsDisposed) RefreshHotkeys();
+        };
+    }
+    ShortcutBox FocusedRecorder() { if(Native.GetForegroundWindow()!=Handle) return null; foreach(var recorder in new[]{macroTrigger,macroAction,wheelAction}) if(recorder!=null&&!recorder.IsDisposed&&recorder.Recording) return recorder; return null; }
     void CaptureStudioDraft() { if(macroName!=null&&!macroName.IsDisposed) { draftName=macroName.Text; draftTrigger=macroTrigger.Text; draftAction=macroAction.Text; } if(wheelAction!=null&&!wheelAction.IsDisposed) { draftWheel=wheelAction.Text; draftWheelChoice=wheelChoice.SelectedIndex; } }
     void ClearSections() { swap.Parent=null; foreach(Control control in new List<Control>(ControlsList(sections))) control.Dispose(); dynamicStates.Clear(); macroName=null; macroTrigger=null; macroAction=null; wheelAction=null; wheelChoice=null; }
     static IEnumerable<Control> ControlsList(Control parent) { foreach(Control c in parent.Controls) yield return c; }
     void BuildStudioView() {
-        ClearSections(); viewTitle=LabelOf(selected<0?L("Knapparnas funktioner"):selected==2?L("Mushjulet · knapp 3"):L("Tumknapp ")+(selected+1),16,true); sections.Controls.Add(viewTitle);
+        rebuilding=true; sections.SuspendLayout(); contentScroll.AutoScrollPosition=Point.Empty;
+        ClearSections();
+        if(editing!=int.MinValue) {
+            BuildMacroEditor(); sections.ResumeLayout(true); SizeSections(contentScroll); rebuilding=false; RefreshHotkeys(); ApplyColors(this); RefreshStudio(); return;
+        }
+        viewTitle=LabelOf(selected<0?L("Knapparnas funktioner"):selected==2?L("Mushjulet · knapp 3"):L("Tumknapp ")+(selected+1),16,true); sections.Controls.Add(viewTitle);
         if(selected==2) BuildWheelEditor();
         else {
             for(int type=0;type<2;type++) { int physical=settings.Swap?1-type:type; if(selected>=0&&selected!=physical) continue; var row=new Panel {Height=112,MinimumSize=new Size(0,112),Margin=new Padding(0,10,0,8)};
@@ -215,17 +218,16 @@ sealed partial class MacroForm {
         swap.Text=L("Byt knappordning för tumknapparna"); swap.AutoSize=true; swap.Margin=new Padding(0,12,0,22); sections.Controls.Add(swap);
         AddText(L("Egna tangentkombinationer"),12,true); AddText(L("Välj en genväg som aktiverar makrot och kombinationen som skickas."),9,false);
         for(int i=0;i<settings.Macros.Count;i++) { int index=i; var macro=settings.Macros[i]; var row=AddButton(sections,macro.Name+"    "+macro.Trigger+"  →  "+macro.Action,delegate { OpenMacro(index); },false); row.Name="macro-"+i; row.AccessibleName=L("Redigera ")+macro.Name; }
-        if(editing>=-1 && editing!=int.MinValue) BuildMacroEditor();
-        else for(int slot=settings.Macros.Count;slot<Math.Max(3,settings.Macros.Count+1);slot++) AddButton(sections,L("+  Lägg till tangentmakro"),delegate { OpenMacro(-1); },false).Name="add-macro";
-        ApplyColors(this); RefreshStudio();
+        for(int slot=settings.Macros.Count;slot<Math.Max(3,settings.Macros.Count+1);slot++) AddButton(sections,L("+  Lägg till tangentmakro"),delegate { OpenMacro(-1); },false).Name="add-macro";
+        sections.ResumeLayout(true); SizeSections(contentScroll); rebuilding=false; RefreshHotkeys(); ApplyColors(this); RefreshStudio();
     }
-    void OpenMacro(int index) { CaptureStudioDraft(); editing=index; KeyMacro macro=index<0?new KeyMacro():settings.Macros[index]; draftName=macro.Name; draftTrigger=macro.Trigger; draftAction=macro.Action; BuildStudioView(); macroName.Focus(); }
+    void OpenMacro(int index) { CaptureStudioDraft(); editing=index; KeyMacro macro=index<0?new KeyMacro():settings.Macros[index]; draftName=macro.Name; draftTrigger=macro.Trigger; draftAction=macro.Action; BuildStudioView(); macroName.Focus(); contentScroll.ScrollControlIntoView(macroName); }
     void BuildMacroEditor() {
-        // Editor state is retained while selecting another physical mouse button.
-        AddText(editing<0?L("Nytt tangentmakro"):L("Redigera tangentmakro"),11,true);
+        AddText(editing<0?L("Nytt tangentmakro"):L("Redigera tangentmakro"),16,true);
+        AddText(L("Spela in en kombination för aktivering och en som makrot ska skicka."),9,false);
         AddText(L("Namn"),9,false); macroName=new TextBox {Text=draftName,Width=450,MaxLength=60,AccessibleName=L("Makrots namn"),BorderStyle=BorderStyle.FixedSingle}; sections.Controls.Add(macroName);
-        AddText(L("Aktiveras med · tryck genvägen"),9,false); macroTrigger=new ShortcutBox {Text=draftTrigger,Width=450,AccessibleName=L("Aktiveras med")}; sections.Controls.Add(macroTrigger);
-        AddText(L("Skickar kombinationen · tryck genvägen"),9,false); macroAction=new ShortcutBox {Text=draftAction,Width=450,AccessibleName=L("Skickar tangentkombination")}; sections.Controls.Add(macroAction);
+        AddText(L("1. Aktiveras med"),9,false); macroTrigger=new ShortcutBox {Text=draftTrigger,Width=450,AccessibleName=L("Aktiveras med")}; sections.Controls.Add(macroTrigger);
+        AddText(L("2. Skickar tangentkombination"),9,false); macroAction=new ShortcutBox {Text=draftAction,Width=450,AccessibleName=L("Skickar tangentkombination")}; sections.Controls.Add(macroAction);
         PrepareRecorder(macroTrigger); PrepareRecorder(macroAction);
         var actions=new FlowLayoutPanel {AutoSize=true,WrapContents=true,Margin=new Padding(0,10,0,16)}; sections.Controls.Add(actions);
         AddButton(actions,L("Spara makro"),SaveMacro,true).Name="save-macro"; AddButton(actions,L("Avbryt"),delegate { CaptureStudioDraft(); int previous=editing; editing=int.MinValue; BuildStudioView(); FocusStudioControl(previous>=0?"macro-"+previous:"add-macro"); },false).Name="cancel-macro";
@@ -234,10 +236,13 @@ sealed partial class MacroForm {
     void BuildWheelEditor() {
         AddText(L("Välj makro för mushjulet"),12,true); AddText(L("Aktiveras när du trycker ned hjulet. Vanlig rullning påverkas inte."),9,false);
         AddText(L("Funktion"),9,false); wheelChoice=new ChoiceBox {Name="wheel-choice",FlatStyle=FlatStyle.Flat,Width=450,AccessibleName=L("Mushjulets funktion")}; wheelChoice.Items.Add(L("Vanligt mittklick")); wheelChoice.Items.Add(L("Egen tangentkombination")); foreach(var macro in settings.Macros) wheelChoice.Items.Add(macro.Name+" · "+macro.Action);
-        int choice=draftWheelChoice>=2?1:draftWheelChoice>=0?draftWheelChoice:wheelEnabled?1:0; wheelChoice.SelectedIndex=choice; sections.Controls.Add(wheelChoice);
-        AddText(L("Skickar tangentkombination · tryck genvägen"),9,false); wheelAction=new ShortcutBox {Text=draftWheel??settings.Wheel,Width=450,Enabled=choice!=0,AccessibleName=L("Hjulmakrots tangentkombination")}; sections.Controls.Add(wheelAction);
+        int choice=draftWheelChoice>=0&&draftWheelChoice<wheelChoice.Items.Count?draftWheelChoice:wheelEnabled?1:0;
+        if(draftWheelChoice<0&&wheelEnabled) for(int i=0;i<settings.Macros.Count;i++) if(settings.Macros[i].Name==settings.WheelName&&settings.Macros[i].Action==settings.Wheel) { choice=i+2; break; } wheelChoice.SelectedIndex=choice; sections.Controls.Add(wheelChoice);
+        var wheelLabel=LabelOf(L("Tangentkombination att skicka"),9,false); wheelLabel.Visible=choice!=0; sections.Controls.Add(wheelLabel);
+        wheelAction=new ShortcutBox {Text=draftWheel??settings.Wheel,Width=450,Enabled=choice!=0,Visible=choice!=0,AccessibleName=L("Hjulmakrots tangentkombination")}; sections.Controls.Add(wheelAction);
         PrepareRecorder(wheelAction);
-        wheelChoice.SelectedIndexChanged+=delegate { wheelAction.Enabled=wheelChoice.SelectedIndex!=0; if(wheelChoice.SelectedIndex>=2) wheelAction.Text=settings.Macros[wheelChoice.SelectedIndex-2].Action; };
+        wheelChoice.SelectedIndexChanged+=delegate { wheelAction.Enabled=wheelChoice.SelectedIndex!=0; wheelAction.Visible=wheelLabel.Visible=wheelChoice.SelectedIndex!=0; if(wheelChoice.SelectedIndex>=2) wheelAction.Text=settings.Macros[wheelChoice.SelectedIndex-2].Action; };
+        wheelAction.TextChanged+=delegate { if(wheelChoice.SelectedIndex>=2&&wheelAction.Text!=settings.Macros[wheelChoice.SelectedIndex-2].Action) wheelChoice.SelectedIndex=1; };
         var actions=new FlowLayoutPanel {AutoSize=true,WrapContents=true,Margin=new Padding(0,10,0,12)}; sections.Controls.Add(actions);
         AddButton(actions,L("Spara hjulmakro"),delegate {
             CaptureStudioDraft();
@@ -248,14 +253,16 @@ sealed partial class MacroForm {
             if(!SaveSettings()) { settings.Wheel=old; settings.WheelName=oldName; return; }
             wheelEnabled=action!=""; draftWheel=null; draftWheelChoice=-1; BuildStudioView(); FocusStudioControl("wheel-choice"); status.Text=wheelEnabled?L("Hjulmakrot är sparat. Tryck på hjulet i målprogrammet för att köra det."):L("Vanligt mittklick är återställt.");
         },true).Name="save-wheel";
-        AddButton(actions,L("Återställ mittklick"),delegate { CaptureStudioDraft(); string old=settings.Wheel; settings.Wheel=""; if(!SaveSettings()) { settings.Wheel=old; return; } wheelEnabled=false; draftWheel=null; draftWheelChoice=-1; BuildStudioView(); FocusStudioControl("wheel-choice"); status.Text=L("Mushjulet använder vanligt mittklick."); },false).Name="reset-wheel";
+        AddButton(actions,L("Återställ mittklick"),delegate { CaptureStudioDraft(); string old=settings.Wheel,oldName=settings.WheelName; settings.Wheel=""; settings.WheelName=""; if(!SaveSettings()) { settings.Wheel=old; settings.WheelName=oldName; return; } wheelEnabled=false; draftWheel=null; draftWheelChoice=-1; BuildStudioView(); FocusStudioControl("wheel-choice"); status.Text=L("Mushjulet använder vanligt mittklick."); },false).Name="reset-wheel";
         AddText(L("Sparad funktion: ")+(wheelEnabled?settings.Wheel:L("Vanligt mittklick")),10,true);
     }
     bool OutputConflicts(string output,List<KeyMacro> macros) { Chord target; if(!Chord.Parse(output,out target)) return true; foreach(var macro in macros) { Chord trigger; if(Chord.Parse(macro.Trigger,out trigger)&&trigger.Same(target)) return true; } return false; }
     void SaveMacro() {
         CaptureStudioDraft(); Chord trigger,action;
-        if(string.IsNullOrWhiteSpace(draftName)||!Chord.Parse(draftTrigger,out trigger)||!Chord.Parse(draftAction,out action)) { status.Text=L("Fyll i namn och två giltiga tangentkombinationer."); return; }
-        if((trigger.Modifiers&11)==0) { status.Text=L("Aktiveringen behöver Ctrl, Alt eller Win tillsammans med en tangent."); macroTrigger.Focus(); return; }
+        if(string.IsNullOrWhiteSpace(draftName)) { status.Text=L("Ge makrot ett namn innan du sparar."); macroName.Focus(); return; }
+        if(!Chord.Parse(draftTrigger,out trigger)) { status.Text=L("Spela in genvägen som ska aktivera makrot."); macroTrigger.FocusRecordButton(); return; }
+        if(!Chord.Parse(draftAction,out action)) { status.Text=L("Spela in kombinationen som makrot ska skicka."); macroAction.FocusRecordButton(); return; }
+        if((trigger.Modifiers&11)==0) { status.Text=L("Aktiveringen behöver Ctrl, Alt eller Win tillsammans med en tangent."); macroTrigger.FocusRecordButton(); return; }
         var candidate=new List<KeyMacro>(settings.Macros); var replacement=new KeyMacro {Name=draftName.Trim(),Trigger=trigger.Text,Action=action.Text}; if(editing<0) candidate.Add(replacement); else candidate[editing]=replacement;
         var seen=new HashSet<string>(); foreach(var macro in candidate) { Chord normalized; Chord.Parse(macro.Trigger,out normalized); if(!seen.Add(normalized.Text)) { status.Text=L("Den aktiveringen används redan av ett tangentmakro."); return; } if(OutputConflicts(macro.Action,candidate)) { status.Text=L("Ett makro får inte skicka en genväg som aktiverar något av dina makron."); return; } }
         if(wheelEnabled&&OutputConflicts(settings.Wheel,candidate)) { status.Text=L("Aktiveringen används som utdata av hjulmakrot. Välj en annan genväg."); return; }
@@ -267,16 +274,16 @@ sealed partial class MacroForm {
     bool SaveSettings() { if(testing) return true; try { settings.Write(settingsFile); return true; } catch { status.Text=L("Inställningarna kunde inte sparas. Kontrollera skrivåtkomsten till Tumacros mapp och försök igen."); return false; } }
     bool RefreshHotkeys() {
         if(!IsHandleCreated) return true;
-        foreach(int id in hotkeys) Native.UnregisterHotKey(Handle,id); hotkeys.Clear(); if(!active) return true;
+        foreach(int id in hotkeys) Native.UnregisterHotKey(Handle,id); hotkeys.Clear(); if(!active||recordingShortcut) return true;
         for(int i=0;i<settings.Macros.Count;i++) { Chord chord,output; if(!Chord.Parse(settings.Macros[i].Trigger,out chord)||!Chord.Parse(settings.Macros[i].Action,out output)||(chord.Modifiers&11)==0||OutputConflicts(settings.Macros[i].Action,settings.Macros)) { status.Text=L("Ett sparat tangentmakro är ogiltigt. Redigera eller ta bort det."); return false; }
             int id=100+i; if(!Native.RegisterHotKey(Handle,id,chord.Modifiers|0x4000,(uint)chord.Key)) { foreach(int registered in hotkeys) Native.UnregisterHotKey(Handle,registered); hotkeys.Clear(); status.Text=L("Genvägen ")+chord.Text+L(" används redan av Windows eller ett annat program. Välj en annan."); return false; } hotkeys.Add(id);
         } return true;
     }
-    protected override void WndProc(ref Message message) { if(message.Msg==0x312) { int index=message.WParam.ToInt32()-100; if(active&&index>=0&&index<settings.Macros.Count) { var recorder=FocusedRecorder(); if(recorder!=null) { recorder.Text=settings.Macros[index].Trigger; message.Result=IntPtr.Zero; return; } Chord trigger; Chord.Parse(settings.Macros[index].Trigger,out trigger); QueueChord(settings.Macros[index].Action,Native.GetForegroundWindow(),trigger.Key); } } base.WndProc(ref message); }
-    void QueueChord(string value,IntPtr foreground,Keys trigger) { Chord chord; if(!active||FocusedRecorder()!=null||!Chord.Parse(value,out chord)) return; if(OutputConflicts(value,settings.Macros)) { status.Text=L("Makrot stoppades eftersom det skulle aktivera ett tangentmakro igen."); return; } if(pendingChord!=null||busy) { status.Text=L("Ett makro pågår. Vänta tills det är klart."); return; } pendingChord=chord; pendingTarget=foreground; pendingTrigger=trigger; chordWait=0; chordTimer.Start(); }
+    protected override void WndProc(ref Message message) { if(message.Msg==0x312) { int index=message.WParam.ToInt32()-100; if(active&&!recordingShortcut&&index>=0&&index<settings.Macros.Count) { Chord trigger; Chord.Parse(settings.Macros[index].Trigger,out trigger); QueueChord(settings.Macros[index].Action,Native.GetForegroundWindow(),trigger.Key); } } base.WndProc(ref message); }
+    void QueueChord(string value,IntPtr foreground,Keys trigger) { Chord chord; if(!active||recordingShortcut||FocusedRecorder()!=null||!Chord.Parse(value,out chord)) return; if(OutputConflicts(value,settings.Macros)) { status.Text=L("Makrot stoppades eftersom det skulle aktivera ett tangentmakro igen."); return; } if(pendingChord!=null||busy) { status.Text=L("Ett makro pågår. Vänta tills det är klart."); return; } pendingChord=chord; pendingTarget=foreground; pendingTrigger=trigger; chordWait=0; chordTimer.Start(); }
     void ExecuteWheel(IntPtr foreground) { if(active&&wheelEnabled) QueueChord(settings.Wheel,foreground,Keys.None); }
     void SendPendingChord(object sender,EventArgs e) {
-        if(!active||Native.GetForegroundWindow()!=pendingTarget) { chordTimer.Stop(); pendingChord=null; status.Text=L("Makrot avbröts eftersom målprogrammet ändrades."); return; }
+        if(!active||recordingShortcut||pendingChord==null||Native.GetForegroundWindow()!=pendingTarget) { chordTimer.Stop(); pendingChord=null; status.Text=L("Makrot avbröts eftersom målprogrammet ändrades."); return; }
         if(Native.Modifiers()||(pendingTrigger!=Keys.None&&(Native.GetAsyncKeyState((int)pendingTrigger)&0x8000)!=0)) { if(++chordWait<100) return; chordTimer.Stop(); pendingChord=null; status.Text=L("Släpp genvägens tangenter och försök igen."); return; }
         chordTimer.Stop(); Chord chord=pendingChord; pendingChord=null; TestChordDispatchCount++; status.Text=Native.SendChord(chord)?L("Skickade ")+chord.Text+L(" till målprogrammet."):L("Windows kunde inte skicka kombinationen. Målprogrammet kan kräva högre behörighet.");
     }
@@ -287,16 +294,17 @@ sealed partial class MacroForm {
         ApplyColors(this); if(diagram!=null) { diagram.Dark=dark; diagram.Invalidate(); } RefreshStudio();
     }
     Color PrimaryHover() { return dark?Color.FromArgb(215,196,247):Color.FromArgb(87,57,153); }
-    void ApplyColors(Control parent) { parent.BackColor=parent==sidebar||parent==footerPanel?page:parent.Parent==null?surface:parent.Parent.BackColor; parent.ForeColor=text; foreach(Control control in parent.Controls) { ApplyColors(control); var button=control as Button; if(button!=null) { bool primary=(string)button.Tag=="primary"; button.BackColor=primary?accent:surface; button.ForeColor=primary?(dark?Color.FromArgb(36,25,55):Color.White):text; button.FlatAppearance.BorderColor=edge; button.FlatAppearance.MouseOverBackColor=primary?PrimaryHover():soft; button.FlatAppearance.MouseDownBackColor=primary?accent:soft; } if(control is TextBox || control is ChoiceBox) control.BackColor=page; var label=control as Label; if(label!=null) { label.BackColor=Color.Transparent; if(label.Font.Size<10.1f) label.ForeColor=muted; } } }
+    void ApplyColors(Control parent) { parent.BackColor=parent==sidebar||parent==footerPanel?page:parent.Parent==null?surface:parent.Parent.BackColor; parent.ForeColor=text; foreach(Control control in parent.Controls) { ApplyColors(control); var button=control as Button; if(button!=null) { bool primary=(string)button.Tag=="primary"; button.BackColor=primary?accent:surface; button.ForeColor=primary?(dark?Color.FromArgb(36,25,55):Color.White):text; button.FlatAppearance.BorderColor=edge; button.FlatAppearance.MouseOverBackColor=primary?PrimaryHover():soft; button.FlatAppearance.MouseDownBackColor=primary?accent:soft; } if(control is TextBox || control is ChoiceBox || control is ShortcutBox) control.BackColor=page; var label=control as Label; if(label!=null) { label.BackColor=Color.Transparent; if(label.Font.Size<10.1f) label.ForeColor=muted; } } }
     void RefreshStudio() {
         if(diagram==null||refreshing) return; refreshing=true;
+        diagram.Enabled=editing==int.MinValue; sidebar.Controls["all-functions"].Enabled=editing==int.MinValue;
         activity.Text=active?L("● Aktiv"):L("● Pausad"); activity.ForeColor=active?(dark?Color.FromArgb(150,218,185):Color.FromArgb(27,111,72)):muted; pause.Text=active?L("Pausa"):L("Aktivera"); startupLabel.Text=StartupInfo();
         foreach(var label in dynamicStates) { int type=int.Parse(((string)label.Tag).Substring(6)); label.Text=!active?L("Pausad"):type==0?(pathReady?L("Klistra in sökväg"):L("Kopiera sökväg")):(copyReady?L("Klistra in · Ctrl+V"):L("Kopiera · Ctrl+C")); label.ForeColor=active?accent:muted; }
         for(int i=0;i<3;i++) { diagram.Buttons[i].BackColor=i==selected?accent:page; diagram.Buttons[i].ForeColor=i==selected?(dark?Color.FromArgb(36,25,55):Color.White):text; diagram.Buttons[i].FlatAppearance.BorderColor=edge; diagram.Buttons[i].FlatAppearance.MouseOverBackColor=i==selected?PrimaryHover():soft; diagram.Buttons[i].FlatAppearance.MouseDownBackColor=i==selected?accent:soft; }
-        tray.Text="Tumacro 1.0.1 · "+(active?L("aktiv"):L("pausad")); refreshing=false;
+        tray.Text="Tumacro 1.0.2 · "+(active?L("aktiv"):L("pausad")); refreshing=false;
     }
-    void StudioHelp() { MessageBox.Show(this,L("TUMKNAPPAR 1 OCH 2\nMarkera innehållet och tryck för att kopiera. Klicka i målet och tryck samma knapp igen för att klistra in. Sökvägsknappen sparar text eller kopierade filers sökvägar, även utanför Utforskaren. Källprogrammet måste stödja kopiering av text eller filinformation.\n\nMUSHJUL 3\nKlicka på 3 i musbilden, välj funktion och spara. Makrot körs när du trycker ned hjulet i målprogrammet. Rullning uppåt/nedåt påverkas inte. Ett tilldelat tangentmakro kopieras till hjulet.\n\nTANGENTMAKRON\nLägg till namn, aktivering och kombination. Tryck genvägen i fältet; Backsteg rensar. Aktiveringen behöver Ctrl, Alt eller Win. Släpp genvägens tangenter efter trycket. Genvägar som redan används kan inte registreras.\n\nBAKGRUND OCH PAUS\nPausa släpper musknappar och tangentgenvägar till Windows. Dölj och kryss behåller programmet vid klockan. Högerklicka på ikonen och välj Avsluta för att stänga.\n\nRazer Synapse: tumknapparna ska vara Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att Tumacro startas med samma behörighet."),L("Tumacro Studio 1.0.1 · hjälp"),MessageBoxButtons.OK,MessageBoxIcon.Information); }
-    void DisposeStudio() { SystemEvents.UserPreferenceChanged-=SystemThemeChanged; foreach(int id in hotkeys) if(IsHandleCreated) Native.UnregisterHotKey(Handle,id); hotkeys.Clear(); chordTimer.Dispose(); openTimer.Dispose(); if(openSignal!=null) openSignal.Dispose(); }
+    void StudioHelp() { MessageBox.Show(this,L("TUMKNAPPAR 1 OCH 2\nMarkera innehållet och tryck för att kopiera. Klicka i målet och tryck samma knapp igen för att klistra in. Sökvägsknappen sparar text eller kopierade filers sökvägar, även utanför Utforskaren. Källprogrammet måste stödja kopiering av text eller filinformation.\n\nMUSHJUL 3\nKlicka på 3 i musbilden, välj funktion och spara. Makrot körs när du trycker ned hjulet i målprogrammet. Rullning uppåt/nedåt påverkas inte. Ett tilldelat tangentmakro kopieras till hjulet.\n\nTANGENTMAKRON\nLägg till namn, aktivering och kombination. Klicka på Spela in, tryck en kombination och släpp tangenterna. Rensa tar bort valet. Esc avbryter inspelningen. Tab kan spelas in. Ctrl+Alt+Delete och andra skyddade systemgenvägar kan inte spelas in. Aktiveringen behöver Ctrl, Alt eller Win. Släpp genvägens tangenter efter trycket. Genvägar som redan används kan inte registreras.\n\nBAKGRUND OCH PAUS\nPausa släpper musknappar och tangentgenvägar till Windows. Dölj och kryss behåller programmet vid klockan. Högerklicka på ikonen och välj Avsluta för att stänga.\n\nRazer Synapse: tumknapparna ska vara Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att Tumacro startas med samma behörighet."),L("Tumacro Studio 1.0.2 · hjälp"),MessageBoxButtons.OK,MessageBoxIcon.Information); }
+    void DisposeStudio() { foreach(var recorder in new[]{macroTrigger,macroAction,wheelAction}) if(recorder!=null) recorder.CancelRecording(); SystemEvents.UserPreferenceChanged-=SystemThemeChanged; foreach(int id in hotkeys) if(IsHandleCreated) Native.UnregisterHotKey(Handle,id); hotkeys.Clear(); chordTimer.Dispose(); openTimer.Dispose(); if(openSignal!=null) openSignal.Dispose(); }
     public void StopHotkeysForPause() { RefreshHotkeys(); pendingChord=null; chordTimer.Stop(); }
     void CaptureStudio(string file) { Application.DoEvents(); using(var bitmap=new Bitmap(Width,Height)) { DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height)); bitmap.Save(file); } }
     public void RenderStudio(string folder) {
@@ -309,7 +317,7 @@ sealed partial class MacroForm {
             finally { Cursor.Position=oldCursor; Application.DoEvents(); }
             Size=MinimumSize;
             foreach(int view in new[]{-1,2}) { selected=view; BuildStudioView(); CaptureStudio(Path.Combine(folder,theme+"-minimum-"+(view<0?"overview":"wheel")+".png")); }
-            Size=normal; selected=2; OpenMacro(-1); macroName.Text="Kommandopalett"; macroTrigger.Text="Ctrl + Alt + F9"; macroAction.Text="Ctrl + Shift + P"; Application.DoEvents(); contentScroll.AutoScrollPosition=new Point(0,Math.Max(0,macroName.Top-70)); CaptureStudio(Path.Combine(folder,theme+"-editor.png")); editing=int.MinValue;
+            Size=normal; selected=2; OpenMacro(-1); macroName.Text="Kommandopalett"; macroTrigger.Text="Ctrl + Alt + F9"; macroAction.Text="Ctrl + Shift + P"; Application.DoEvents(); CaptureStudio(Path.Combine(folder,theme+"-editor.png")); Size=MinimumSize; CaptureStudio(Path.Combine(folder,theme+"-minimum-editor.png")); editing=int.MinValue;
         }
         languages.SelectedIndex=1;
         foreach(string theme in new[]{"light","dark"}) {

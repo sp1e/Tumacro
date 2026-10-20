@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
@@ -103,7 +103,7 @@ sealed partial class MacroForm : Form {
                 if(!down) { held[b]=false; if(swallowed[b]) { swallowed[b]=false; return (IntPtr)1; } }
                 else if(held[b]) { if(swallowed[b]) return (IntPtr)1; }
                 else {
-                    held[b]=true; swallowed[b]=active && (b!=3 || wheelEnabled);
+                    held[b]=true; swallowed[b]=active && !recordingShortcut && (b!=3 || wheelEnabled);
                     if(swallowed[b]) { IntPtr foreground=Native.GetForegroundWindow();
                         try { BeginInvoke((Action)delegate { if(!IsDisposed) { if(b==3) ExecuteWheel(foreground); else Execute(b,foreground); } }); } catch(InvalidOperationException) { }
                         return (IntPtr)1;
@@ -118,7 +118,7 @@ sealed partial class MacroForm : Form {
     }
     void Execute(int button,IntPtr foreground) {
         RecordButton(button);
-        if(!active) return;
+        if(!active||recordingShortcut) return;
         if(busy) { status.Text=L("Kopieringen pågår. Vänta på beskedet Sökvägen är sparad och tryck sedan igen."); return; }
         if(Native.Modifiers()) { status.Text=L("Släpp Ctrl, Shift, Alt och Windows-tangenten och försök igen."); return; }
         if(Native.GetForegroundWindow()!=foreground) { status.Text=L("Fönstret ändrades. Tryck igen i rätt fönster."); return; }
@@ -223,6 +223,9 @@ static partial class Program {
     static void Assert(bool value,string name,List<string> report) { if(!value) throw new Exception(name); report.Add("PASS: "+name); if(progressFile!=null) File.AppendAllText(progressFile,"PASS: "+name+Environment.NewLine); }
     static void PressTestButton(MacroForm form,TextBox box,int button) {
         Pump(150);
+        // Injected mouse buttons use the real pointer position. Keep the pointer
+        // over the test target instead of activating whichever app is beneath it.
+        Cursor.Position=box.PointToScreen(new System.Drawing.Point(box.Width/2,box.Height/2));
         WaitFor(delegate {
             if(Native.GetForegroundWindow()!=form.Handle) Native.FocusTestWindow(form.Handle);
             box.Focus();
@@ -232,7 +235,7 @@ static partial class Program {
         Native.TestButton(button);
     }
     static int SelfTest(string file) {
-        var report=new List<string>(); DataObject previous=null;
+        var report=new List<string>(); DataObject previous=null; System.Drawing.Point previousPointer=Cursor.Position;
         try { IDataObject current=Clipboard.GetDataObject(); if(current!=null) { previous=new DataObject(); foreach(string format in current.GetFormats(false)) { object data=current.GetData(format,false); if(data!=null) previous.SetData(format,false,data); } } } catch { previous=null; }
         try {
             Assert(Marshal.SizeOf(typeof(Native.Input))==(IntPtr.Size==8?40:28),"Windows INPUT layout",report);
@@ -246,16 +249,18 @@ static partial class Program {
                 f.SetSwap(false); TextBox box=new TextBox { Multiline=true,Text="Tumacro copy test",Bounds=new Rectangle(24,65,530,42) }; f.Controls.Add(box); box.BringToFront();
                 bool copyFiles=false; var keyTrace=new List<string>();
                 box.KeyDown+=delegate(object sender,KeyEventArgs key) { keyTrace.Add(key.KeyCode+":"+key.Modifiers); };
+                box.LostFocus+=delegate { var name=new StringBuilder(256); Native.GetClassName(Native.GetForegroundWindow(),name,name.Capacity); keyTrace.Add("FOCUS-LOST:"+name+":"+(f.ActiveControl==null?"none":f.ActiveControl.GetType().Name+":"+f.ActiveControl.Name)); };
                 box.KeyDown+=delegate(object s,KeyEventArgs e) { if(copyFiles && e.Control && e.KeyCode==Keys.C) { var files=new System.Collections.Specialized.StringCollection(); files.Add("C:\\Tumacro test\\sample.txt"); files.Add(@"\\server\share\other.txt"); Clipboard.SetFileDropList(files); e.SuppressKeyPress=true; } };
                 f.TopMost=true; f.Show(); Pump(100);
                 WaitFor(delegate { Native.FocusTestWindow(f.Handle); box.Focus(); return Native.GetForegroundWindow()==f.Handle && box.Focused; });
                 Assert(f.TestError==null,"Global mouse hook installed",report);
-                Assert(Native.GetForegroundWindow()==f.Handle,"Controlled test window focused",report);
+                var focusClass=new StringBuilder(256); Native.GetClassName(Native.GetForegroundWindow(),focusClass,focusClass.Capacity);
+                Assert(Native.GetForegroundWindow()==f.Handle,"Controlled test window focused; foreground="+Native.GetForegroundWindow()+"; target="+f.Handle+"; class="+focusClass+"; visible="+f.Visible+"; active="+(Form.ActiveForm==f)+"; box="+box.Focused,report);
                 box.SelectAll(); PressTestButton(f,box,2);
                 WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="Tumacro copy test"; });
                 Assert(f.CopyReady && Clipboard.GetText()=="Tumacro copy test","Mouse button 2 sends Ctrl+C and arms paste; "+f.Status+"; focused="+box.Focused+"; selection="+box.SelectionLength+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 box.Clear(); PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="Tumacro copy test"; });
-                Assert(!f.CopyReady && box.Text=="Tumacro copy test","Second mouse button 2 press sends Ctrl+V and resets; "+f.Status+"; focused="+box.Focused+"; length="+box.TextLength,report);
+                Assert(!f.CopyReady && box.Text=="Tumacro copy test","Second mouse button 2 press sends Ctrl+V and resets; "+f.Status+"; focused="+box.Focused+"; length="+box.TextLength+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 box.Text="/home/test/my file.txt"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; }); Assert(f.PathReady,"Path button copies selected text in an ordinary text window, outside Explorer; "+f.Status+"; focused="+box.Focused+"; selection="+box.SelectionLength+"; busy="+f.Busy+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 Clipboard.SetText("intervening clipboard content"); box.Clear(); PressTestButton(f,box,1); WaitFor(delegate { return box.Text=="/home/test/my file.txt"; });
                 Assert(!f.PathReady && box.Text=="/home/test/my file.txt","Path paste restores selected text after unrelated clipboard copying",report);
@@ -275,6 +280,6 @@ static partial class Program {
             report.Add("Controlled integration tests passed. Physical Razer buttons and File Explorer are not covered by this test.");
             File.WriteAllLines(file,report.ToArray()); return 0;
         } catch(Exception e) { report.Add("FAIL: "+e.Message); File.WriteAllLines(file,report.ToArray()); return 1; }
-        finally { try { if(previous!=null) Clipboard.SetDataObject(previous,true); } catch { } }
+        finally { Cursor.Position=previousPointer; try { if(previous!=null) Clipboard.SetDataObject(previous,true); } catch { } }
     }
 }
