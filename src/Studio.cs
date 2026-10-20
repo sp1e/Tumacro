@@ -12,8 +12,8 @@ using System.Threading;
 [assembly: AssemblyTitle("Tumacro")]
 [assembly: AssemblyDescription("Mouse macros and keyboard shortcuts")]
 [assembly: AssemblyProduct("Tumacro")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyFileVersion("1.0.1.0")]
 
 public class KeyMacro { public string Name=""; public string Trigger=""; public string Action=""; }
 public class StudioSettings {
@@ -143,11 +143,11 @@ sealed partial class MacroForm {
         Chord wheel; if(!string.IsNullOrEmpty(settings.Wheel)&&!Chord.Parse(settings.Wheel,out wheel)) { settings.Wheel=""; loadWarning=L("Hjulmakrot var ogiltigt och stängdes av."); }
         wheelEnabled=!string.IsNullOrEmpty(settings.Wheel); swap.Checked=settings.Swap;
         if(settings.Language!="en") settings.Language="sv";
-        Text="Tumacro · 1.0"; Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi; StartPosition=FormStartPosition.CenterScreen; MinimumSize=new Size(850,720); ClientSize=new Size(980,Math.Min(800,Screen.PrimaryScreen.WorkingArea.Height-90));
+        Text="Tumacro · 1.0.1"; Font=new Font("Segoe UI",10); AutoScaleMode=AutoScaleMode.Dpi; StartPosition=FormStartPosition.CenterScreen; MinimumSize=new Size(850,720); ClientSize=new Size(980,Math.Min(800,Screen.PrimaryScreen.WorkingArea.Height-90));
         Icon=MakeIcon();
         header=new Panel {Dock=DockStyle.Top,Height=66,Padding=new Padding(22,12,18,12)}; Controls.Add(header);
         var brand=LabelOf("Tumacro",19,true); brand.Location=new Point(24,15); header.Controls.Add(brand);
-        var version=LabelOf("STUDIO 1.0",9,false); version.Location=new Point(220,28); header.Controls.Add(version);
+        var version=LabelOf("STUDIO 1.0.1",9,false); version.Location=new Point(220,28); header.Controls.Add(version);
         activity.AutoSize=true; activity.Font=new Font(Font,FontStyle.Bold); activity.Anchor=AnchorStyles.Top|AnchorStyles.Right; header.Controls.Add(activity);
         themes=new ChoiceBox {FlatStyle=FlatStyle.Flat,Width=190,Anchor=AnchorStyles.Top|AnchorStyles.Right,AccessibleName=L("Tema")}; themes.Items.AddRange(new object[]{L("Följ Windows"),L("Ljust läge"),L("Mörkt läge")}); themes.SelectedIndex=settings.Theme=="dark"?2:settings.Theme=="light"?1:0; header.Controls.Add(themes);
         languages=new ChoiceBox {Name="language-choice",FlatStyle=FlatStyle.Flat,Width=130,Anchor=AnchorStyles.Top|AnchorStyles.Right}; languages.Items.AddRange(new object[]{"Svenska","English"}); languages.SelectedIndex=settings.Language=="en"?1:0; header.Controls.Add(languages);
@@ -293,9 +293,9 @@ sealed partial class MacroForm {
         activity.Text=active?L("● Aktiv"):L("● Pausad"); activity.ForeColor=active?(dark?Color.FromArgb(150,218,185):Color.FromArgb(27,111,72)):muted; pause.Text=active?L("Pausa"):L("Aktivera"); startupLabel.Text=StartupInfo();
         foreach(var label in dynamicStates) { int type=int.Parse(((string)label.Tag).Substring(6)); label.Text=!active?L("Pausad"):type==0?(pathReady?L("Klistra in sökväg"):L("Kopiera sökväg")):(copyReady?L("Klistra in · Ctrl+V"):L("Kopiera · Ctrl+C")); label.ForeColor=active?accent:muted; }
         for(int i=0;i<3;i++) { diagram.Buttons[i].BackColor=i==selected?accent:page; diagram.Buttons[i].ForeColor=i==selected?(dark?Color.FromArgb(36,25,55):Color.White):text; diagram.Buttons[i].FlatAppearance.BorderColor=edge; diagram.Buttons[i].FlatAppearance.MouseOverBackColor=i==selected?PrimaryHover():soft; diagram.Buttons[i].FlatAppearance.MouseDownBackColor=i==selected?accent:soft; }
-        tray.Text="Tumacro 1.0 · "+(active?L("aktiv"):L("pausad")); refreshing=false;
+        tray.Text="Tumacro 1.0.1 · "+(active?L("aktiv"):L("pausad")); refreshing=false;
     }
-    void StudioHelp() { MessageBox.Show(this,L("TUMKNAPPAR 1 OCH 2\nMarkera innehållet och tryck för att kopiera. Klicka i målet och tryck samma knapp igen för att klistra in. Sökvägsknappen sparar text eller kopierade filers sökvägar, även utanför Utforskaren. Källprogrammet måste stödja kopiering av text eller filinformation.\n\nMUSHJUL 3\nKlicka på 3 i musbilden, välj funktion och spara. Makrot körs när du trycker ned hjulet i målprogrammet. Rullning uppåt/nedåt påverkas inte. Ett tilldelat tangentmakro kopieras till hjulet.\n\nTANGENTMAKRON\nLägg till namn, aktivering och kombination. Tryck genvägen i fältet; Backsteg rensar. Aktiveringen behöver Ctrl, Alt eller Win. Släpp genvägens tangenter efter trycket. Genvägar som redan används kan inte registreras.\n\nBAKGRUND OCH PAUS\nPausa släpper musknappar och tangentgenvägar till Windows. Dölj och kryss behåller programmet vid klockan. Högerklicka på ikonen och välj Avsluta för att stänga.\n\nRazer Synapse: tumknapparna ska vara Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att Tumacro startas med samma behörighet."),L("Tumacro Studio 1.0 · hjälp"),MessageBoxButtons.OK,MessageBoxIcon.Information); }
+    void StudioHelp() { MessageBox.Show(this,L("TUMKNAPPAR 1 OCH 2\nMarkera innehållet och tryck för att kopiera. Klicka i målet och tryck samma knapp igen för att klistra in. Sökvägsknappen sparar text eller kopierade filers sökvägar, även utanför Utforskaren. Källprogrammet måste stödja kopiering av text eller filinformation.\n\nMUSHJUL 3\nKlicka på 3 i musbilden, välj funktion och spara. Makrot körs när du trycker ned hjulet i målprogrammet. Rullning uppåt/nedåt påverkas inte. Ett tilldelat tangentmakro kopieras till hjulet.\n\nTANGENTMAKRON\nLägg till namn, aktivering och kombination. Tryck genvägen i fältet; Backsteg rensar. Aktiveringen behöver Ctrl, Alt eller Win. Släpp genvägens tangenter efter trycket. Genvägar som redan används kan inte registreras.\n\nBAKGRUND OCH PAUS\nPausa släpper musknappar och tangentgenvägar till Windows. Dölj och kryss behåller programmet vid klockan. Högerklicka på ikonen och välj Avsluta för att stänga.\n\nRazer Synapse: tumknapparna ska vara Back/Bakåt och Forward/Framåt. Program som körs som administratör kan kräva att Tumacro startas med samma behörighet."),L("Tumacro Studio 1.0.1 · hjälp"),MessageBoxButtons.OK,MessageBoxIcon.Information); }
     void DisposeStudio() { SystemEvents.UserPreferenceChanged-=SystemThemeChanged; foreach(int id in hotkeys) if(IsHandleCreated) Native.UnregisterHotKey(Handle,id); hotkeys.Clear(); chordTimer.Dispose(); openTimer.Dispose(); if(openSignal!=null) openSignal.Dispose(); }
     public void StopHotkeysForPause() { RefreshHotkeys(); pendingChord=null; chordTimer.Stop(); }
     void CaptureStudio(string file) { Application.DoEvents(); using(var bitmap=new Bitmap(Width,Height)) { DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height)); bitmap.Save(file); } }

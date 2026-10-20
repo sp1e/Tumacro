@@ -1,4 +1,4 @@
-# Tumacro 1.0
+# Tumacro 1.0.1
 
 A small Windows app for two mouse thumb buttons, the wheel click, and custom keyboard shortcuts. Select button 1, 2, or 3 in the mouse diagram to view or change its function. Choose Svenska or English in the header to switch languages. Tumacro saves your choice.
 
@@ -42,4 +42,4 @@ Run `Build.ps1` in PowerShell. The source code and Windows manifest are in `src`
 
 ## Version history
 
-Tumacro 1.0 continues the application previously named TumMakro Studio. Its GitHub tag is `tumacro-v1.0.0`. Earlier releases retain their original names and tags. On first launch, Tumacro copies existing settings from `%LOCALAPPDATA%\TumMakro` when no Tumacro settings exist. The installer replaces the old startup entry.
+Tumacro continues the application previously named TumMakro Studio. Version 1.0.1 introduces a mouse icon with two highlighted thumb controls. Its GitHub tag is `tumacro-v1.0.1`. Earlier releases retain their original names and tags. On first launch, Tumacro copies existing settings from `%LOCALAPPDATA%\TumMakro` when no Tumacro settings exist. The installer replaces the old startup entry.

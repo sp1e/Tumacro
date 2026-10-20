@@ -97,7 +97,7 @@ static class UiText {
         {"Kopiera · Ctrl+C","Copy · Ctrl+C"},
         {"aktiv","active"},
         {"pausad","paused"},
-        {"Tumacro Studio 1.0 · hjälp","Tumacro 1.0 · help"},
+        {"Tumacro Studio 1.0.1 · hjälp","Tumacro 1.0.1 · help"},
         {"Kunde inte ansluta tumknapparna. Starta om programmet.","Could not connect the thumb buttons. Restart the app."},
         {"Start med Windows: inte inställd.","Windows startup: not configured."},
         {"Start med Windows: inställd. Programmet öppnas vid klockan.","Windows startup: configured. The app starts in the system tray."},

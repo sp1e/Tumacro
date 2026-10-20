@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T20:03:38Z",
+  "title": "Design System: Tumacro application icon",
+  "extensions": {
+    "colorMeta": {
+      "thumb-orange": { "role": "primary", "displayName": "Thumb orange" },
+      "porcelain": { "role": "neutral", "displayName": "Porcelain" },
+      "graphite": { "role": "neutral", "displayName": "Graphite" }
+    }
+  },
+  "components": [
+    {
+      "name": "Application icon",
+      "kind": "custom",
+      "refersTo": "application-icon",
+      "description": "Static mouse macro icon. Geometry comes from assets/Tumacro.svg; these tokens apply to the icon only.",
+      "html": "<svg class=\"ds-tumacro-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" role=\"img\" aria-labelledby=\"ds-tumacro-title\"><title id=\"ds-tumacro-title\">Tumacro: two thumb controls</title><rect x=\"2\" y=\"2\" width=\"60\" height=\"60\" rx=\"14\" fill=\"#f1efe8\"/><path d=\"M35 10C25 10 20 17 20 27v12c0 10 6 16 15 16s16-7 16-17V26c0-10-6-16-16-16Z\" fill=\"#171d21\"/><rect x=\"33\" y=\"17\" width=\"5\" height=\"8\" rx=\"2\" fill=\"#f1efe8\"/><rect x=\"13\" y=\"28\" width=\"12\" height=\"8\" rx=\"2\" fill=\"#e57845\"/><rect x=\"13\" y=\"40\" width=\"12\" height=\"8\" rx=\"2\" fill=\"#e57845\"/></svg>",
+      "css": ".ds-tumacro-icon { display: block; width: 64px; height: 64px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quiet industrial control graphics",
+    "overview": "Tumacro's icon identifies its mouse macro function through a broad mouse body and two highlighted thumb controls. The user chose recognition of this hardware interaction over recognition of the product name. The finished icon uses authored vector geometry and flat fills.\n\nThis document covers the application icon identity only. The native application's existing violet light and dark interface remains outside this palette and token set. Use the source SVG as the geometry authority when exporting the icon.",
+    "keyCharacteristics": [
+      "Broad asymmetric graphite mouse with a short porcelain wheel inset.",
+      "Two separate orange thumb controls on a porcelain field.",
+      "Static geometry with no lettering, arrow badge, texture, or shadow."
+    ],
+    "rules": [
+      {
+        "name": "The Icon Scope Rule",
+        "body": "Apply these colors to the icon asset. Preserve the application's existing UI theme when extending native screens.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do preserve the source silhouette, separate thumb controls, and short wheel inset when exporting.",
+      "Do check the icon at native small sizes on light and dark backgrounds after an asset change.",
+      "Do keep the SVG, PNG preview, and all nine ICO entries consistent."
+    ],
+    "donts": [
+      "Don't restore the rejected thin oval, letter T, or arrow badge.",
+      "Don't add lettering, texture, ornament, or simulated depth to this icon.",
+      "Don't apply the icon palette as a replacement for the native application's violet UI themes."
+    ]
+  }
+}
