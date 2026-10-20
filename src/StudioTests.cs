@@ -3,7 +3,41 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Threading;
+sealed class InputTraceBox : TextBox {
+    public readonly List<string> Messages=new List<string>();
+    protected override void WndProc(ref Message message) {
+        int kind=message.Msg;
+        if(kind==0x102||kind==0x302) Messages.Add("MSG:"+kind.ToString("X")+":"+message.WParam+":open="+Native.GetOpenClipboardWindow()+":mods="+Control.ModifierKeys);
+        base.WndProc(ref message);
+        if(kind==0x302) Messages.Add("PASTE-RESULT:length="+TextLength);
+    }
+    protected override void OnKeyDown(KeyEventArgs e) { base.OnKeyDown(e); Messages.Add("DOWN:"+e.KeyCode+":handled="+e.Handled+":suppress="+e.SuppressKeyPress); }
+    protected override bool ProcessCmdKey(ref Message msg,Keys keyData) { bool result=base.ProcessCmdKey(ref msg,keyData); Messages.Add("CMD:"+keyData+":"+result); return result; }
+}
+sealed class ClipboardHold : IDisposable {
+    readonly ManualResetEvent ready=new ManualResetEvent(false),release=new ManualResetEvent(false);
+    readonly Thread worker; readonly Form window=new Form(); bool acquired,disposed;
+    public ClipboardHold() {
+        IntPtr owner=window.Handle;
+        worker=new Thread(delegate() {
+            var until=DateTime.UtcNow.AddSeconds(1);
+            while(!(acquired=Native.OpenClipboard(owner))&&DateTime.UtcNow<until) if(release.WaitOne(10)) return;
+            ready.Set(); if(!acquired) return;
+            try { release.WaitOne(); } finally { Native.CloseClipboard(); }
+        }); worker.IsBackground=true; worker.Start();
+        if(!ready.WaitOne(1200)||!acquired) { Dispose(); throw new Exception("Could not acquire controlled clipboard lock"); }
+        if(Native.ClipboardAvailable()) { Dispose(); throw new Exception("Controlled clipboard lock was not exclusive"); }
+    }
+    public void Dispose() {
+        if(disposed) return; disposed=true; release.Set();
+        var until=DateTime.UtcNow.AddMilliseconds(1500); while(worker.IsAlive&&DateTime.UtcNow<until) { Application.DoEvents(); Thread.Sleep(5); }
+        if(worker.IsAlive) throw new Exception("Clipboard lock worker did not stop");
+        window.Dispose(); ready.Dispose(); release.Dispose();
+    }
+}
 static partial class Native {
+    [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern IntPtr GetOpenClipboardWindow();
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr icon);
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window,IntPtr context,uint flags);
     public static void TestKey(Keys key,bool up) { var input=new[]{Key((int)key,up)}; SendInput(1,input,System.Runtime.InteropServices.Marshal.SizeOf(typeof(Input))); }

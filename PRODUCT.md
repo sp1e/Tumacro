@@ -10,7 +10,7 @@ Tumacro maps two mouse thumb buttons to independent copy/paste steps. One captur
 
 ## Current design scope
 
-The October 20, 2026 request replaces the application icon. The user explicitly chose recognition of the mouse-macro function over recognition of the product name. The application interface, macro behavior, settings, language support, and startup behavior stay within their existing design.
+The October 21, 2026 request redesigns the native Studio interface around a physical mouse diagram, live next-action readouts, and a shared overview for mouse assignments and keyboard macros. The user chose Apple interface restraint and Teenage Engineering instrument character, with light/dark/system themes and Swedish/English controls. Preserve the selected application icon, background operation, sign-in startup, and the independent copy/paste workflows while improving macro editing and recorder behavior and resolving clipboard failures. The icon retains the October 20 decision to identify the mouse-macro function through its silhouette and two thumb controls.
 
 ## Icon commitments
 

@@ -56,7 +56,7 @@ sealed partial class MacroForm : Form {
     readonly Label status=new Label(), lastButton=new Label();
     readonly Label activity=new Label();
     readonly ToolTip tips=new ToolTip();
-    readonly Button pause=new Button(); readonly CheckBox swap=new CheckBox();
+    readonly Button pause=new StudioButton(); readonly CheckBox swap=new CheckBox();
     readonly NotifyIcon tray=new NotifyIcon(); readonly System.Windows.Forms.Timer copyTimer=new System.Windows.Forms.Timer();
     Native.HookProc callback; IntPtr hook; volatile bool active=true; bool busy, pathReady, copyReady, quitting, capturePath;
     Thread hookThread; ApplicationContext hookContext;
@@ -91,7 +91,7 @@ sealed partial class MacroForm : Form {
         } } catch { return L("Start med Windows: kontrollera under Startappar i Windows."); }
     }
     public void TogglePause() { active=!active; Reset(); StopHotkeysForPause(); status.Text=active?L("Aktiv. Nästa tryck på båda tumknapparna kopierar."):L("Pausad. Musknappar och tangentgenvägar fungerar som vanligt."); UpdateStates(); }
-    public void Reset() { copyTimer.Stop(); busy=false; pathReady=false; copyReady=false; savedPath=null; status.Text=L("Båda knapparna börjar om: nästa tryck kopierar. Windows-urklippet finns kvar."); UpdateStates(); }
+    public void Reset() { copyTimer.Stop(); CancelPaste(null); busy=false; pathReady=false; copyReady=false; savedPath=null; status.Text=L("Båda knapparna börjar om: nästa tryck kopierar. Windows-urklippet finns kvar."); UpdateStates(); }
     void UpdateStates() { RefreshStudio(); }
     IntPtr MouseHook(int code,IntPtr msg,IntPtr data) {
         long message=msg.ToInt64();
@@ -119,18 +119,12 @@ sealed partial class MacroForm : Form {
     void Execute(int button,IntPtr foreground) {
         RecordButton(button);
         if(!active||recordingShortcut) return;
-        if(busy) { status.Text=L("Kopieringen pågår. Vänta på beskedet Sökvägen är sparad och tryck sedan igen."); return; }
+        if(busy) { status.Text=pendingPaste?L("Inklistringen pågår. Vänta tills den är klar."):L("Kopieringen pågår. Vänta på beskedet Sökvägen är sparad och tryck sedan igen."); return; }
         if(Native.Modifiers()) { status.Text=L("Släpp Ctrl, Shift, Alt och Windows-tangenten och försök igen."); return; }
         if(Native.GetForegroundWindow()!=foreground) { status.Text=L("Fönstret ändrades. Tryck igen i rätt fönster."); return; }
         bool path=swap.Checked?button==2:button==1;
         if((path && pathReady) || (!path && copyReady)) {
-            try {
-                if(path) Clipboard.SetText(savedPath);
-                if(Native.GetForegroundWindow()!=foreground) { status.Text=L("Fönstret ändrades. Tryck igen i rätt fönster."); return; }
-                if(!Native.Shortcut(0x56,false)) { status.Text=L("Windows kunde inte skicka Ctrl+V till det här fönstret."); return; }
-                if(path) { pathReady=false; savedPath=null; } else copyReady=false;
-                status.Text=path?L("Skickade den sparade sökvägen till målet. Nästa tryck på sökvägsknappen kopierar igen."):L("Skickade Ctrl+V till målet. Nästa tryck på Ctrl+C-knappen kopierar igen."); UpdateStates();
-            } catch { status.Text=L("Urklipp är upptaget. Försök klistra in igen."); }
+            BeginPaste(path,button,foreground);
             return;
         }
         oldSequence=Native.GetClipboardSequenceNumber(); target=foreground; capturePath=path; attempts=0; busy=true;
@@ -176,7 +170,7 @@ sealed partial class MacroForm : Form {
     protected override void Dispose(bool disposing) {
         active=false;
         if(hook!=IntPtr.Zero) { Native.UnhookWindowsHookEx(hook); hook=IntPtr.Zero; }
-        if(disposing) { if(hookContext!=null) hookContext.ExitThread(); DisposeStudio(); copyTimer.Dispose(); tips.Dispose(); tray.Visible=false; tray.Dispose(); } base.Dispose(disposing);
+        if(disposing) { CancelPaste(null); if(hookContext!=null) hookContext.ExitThread(); DisposeStudio(); copyTimer.Dispose(); pasteTimer.Dispose(); tips.Dispose(); tray.Visible=false; tray.Dispose(); } base.Dispose(disposing);
     }
     public void Quit() { quitting=true; Close(); }
     public void SetSwap(bool value) { swap.Checked=value; }
@@ -185,9 +179,10 @@ sealed partial class MacroForm : Form {
 
 static partial class Program {
     [STAThread] static int Main(string[] args) {
-        if(args.Length>0&&args[0].StartsWith("--self-test")) Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+        if(args.Length>0&&(args[0].StartsWith("--self-test")||args[0].StartsWith("--render"))) Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         if(args.Length>1 && args[0]=="--render-studio") { using(MacroForm preview=new MacroForm(true)) preview.RenderStudio(args[1]); return 0; }
+        if(args.Length>1 && args[0]=="--render-studio-review") { using(MacroForm preview=new MacroForm(true)) preview.RenderStudioReview(args[1]); return 0; }
         if(args.Length>0 && args[0]=="--self-test-studio") return StudioTest(args.Length>1?args[1]:"studio-test.txt");
         if(args.Length>1 && args[0]=="--render-ui") { using(MacroForm preview=new MacroForm(true)) preview.RenderPreview(args[1]); return 0; }
         if(args.Length>0 && args[0]=="--self-test") return SelfTest(args.Length>1?args[1]:"self-test.txt");
@@ -246,7 +241,7 @@ static partial class Program {
             fileData.SetData(DataFormats.UnicodeText,"display name only");
             Assert(MacroForm.PathsFromData(fileData)=="C:\\test\\a.txt"+Environment.NewLine+@"\\server\share\b.txt","Copied file paths take priority over file display text",report);
             using(MacroForm f=new MacroForm(true)) {
-                f.SetSwap(false); TextBox box=new TextBox { Multiline=true,Text="Tumacro copy test",Bounds=new Rectangle(24,65,530,42) }; f.Controls.Add(box); box.BringToFront();
+                f.SetSwap(false); var box=new InputTraceBox { Multiline=true,Text="Tumacro copy test",Bounds=new Rectangle(24,65,530,42) }; f.Controls.Add(box); box.BringToFront();
                 bool copyFiles=false; var keyTrace=new List<string>();
                 box.KeyDown+=delegate(object sender,KeyEventArgs key) { keyTrace.Add(key.KeyCode+":"+key.Modifiers); };
                 box.LostFocus+=delegate { var name=new StringBuilder(256); Native.GetClassName(Native.GetForegroundWindow(),name,name.Capacity); keyTrace.Add("FOCUS-LOST:"+name+":"+(f.ActiveControl==null?"none":f.ActiveControl.GetType().Name+":"+f.ActiveControl.Name)); };
@@ -259,18 +254,40 @@ static partial class Program {
                 box.SelectAll(); PressTestButton(f,box,2);
                 WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="Tumacro copy test"; });
                 Assert(f.CopyReady && Clipboard.GetText()=="Tumacro copy test","Mouse button 2 sends Ctrl+C and arms paste; "+f.Status+"; focused="+box.Focused+"; selection="+box.SelectionLength+"; keys="+string.Join(",",keyTrace.ToArray()),report);
-                box.Clear(); PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="Tumacro copy test"; });
+                box.Clear();
+                using(var hold=new ClipboardHold()) { PressTestButton(f,box,2); Pump(200); Assert(f.CopyReady&&f.Busy&&box.TextLength==0,"Busy clipboard defers normal paste without losing its paste state; "+f.Status+"; ready="+f.CopyReady+"; busy="+f.Busy+"; focused="+box.Focused,report); }
+                WaitFor(delegate { return box.Text=="Tumacro copy test"; });
                 Assert(!f.CopyReady && box.Text=="Tumacro copy test","Second mouse button 2 press sends Ctrl+V and resets; "+f.Status+"; focused="+box.Focused+"; length="+box.TextLength+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 box.Text="/home/test/my file.txt"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; }); Assert(f.PathReady,"Path button copies selected text in an ordinary text window, outside Explorer; "+f.Status+"; focused="+box.Focused+"; selection="+box.SelectionLength+"; busy="+f.Busy+"; keys="+string.Join(",",keyTrace.ToArray()),report);
-                Clipboard.SetText("intervening clipboard content"); box.Clear(); PressTestButton(f,box,1); WaitFor(delegate { return box.Text=="/home/test/my file.txt"; });
+                Clipboard.SetText("intervening clipboard content"); box.Clear();
+                using(var hold=new ClipboardHold()) { PressTestButton(f,box,1); Pump(200); Assert(f.PathReady&&f.Busy&&box.TextLength==0,"Busy clipboard defers stored-path paste and keeps the saved path",report); }
+                WaitFor(delegate { return box.Text=="/home/test/my file.txt"; });
                 Assert(!f.PathReady && box.Text=="/home/test/my file.txt","Path paste restores selected text after unrelated clipboard copying",report);
                 copyFiles=true; box.Text="selected file items"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.PathReady; });
                 string capturedFiles="C:\\Tumacro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
-                Assert(f.PathReady && f.SavedPathForTest==capturedFiles,"Path button captures copied file-drop data from a non-Explorer window",report);
+                Assert(f.PathReady && f.SavedPathForTest==capturedFiles,"Path button captures copied file-drop data from a non-Explorer window; "+f.Status+"; foreground="+(Native.GetForegroundWindow()==f.Handle)+"; focused="+box.Focused+"; busy="+f.Busy+"; pathLength="+(f.SavedPathForTest==null?0:f.SavedPathForTest.Length)+"; keys="+string.Join(",",keyTrace.ToArray()),report);
                 copyFiles=false; box.Clear(); PressTestButton(f,box,1); string expectedFiles="C:\\Tumacro test\\sample.txt"+Environment.NewLine+@"\\server\share\other.txt";
                 WaitFor(delegate { return box.Text==expectedFiles; });
-                Assert(!f.PathReady && box.Text==expectedFiles,"Multiple copied files paste as path text, including network paths: "+f.Status+"; focused="+box.Focused+"; text length="+box.TextLength+"; clipboard length="+(Clipboard.ContainsText()?Clipboard.GetText().Length:0)+"; keys="+string.Join(",",keyTrace.ToArray()),report);
-                f.TogglePause(); box.SelectAll(); PressTestButton(f,box,2); Pump(150);
+                Assert(!f.PathReady && box.Text==expectedFiles,"Multiple copied files paste as path text, including network paths: "+f.Status+"; focused="+box.Focused+"; text length="+box.TextLength+"; clipboard length="+(Clipboard.ContainsText()?Clipboard.GetText().Length:0)+"; keys="+string.Join(",",keyTrace.ToArray())+"; native="+string.Join(",",box.Messages.ToArray()),report);
+                box.Text="Clipboard timeout retry"; box.SelectAll(); PressTestButton(f,box,2); WaitFor(delegate { return f.CopyReady&&Clipboard.ContainsText()&&Clipboard.GetText()=="Clipboard timeout retry"; }); box.Clear();
+                using(var hold=new ClipboardHold()) { PressTestButton(f,box,2); Pump(1900); Assert(f.CopyReady&&!f.Busy&&box.TextLength==0,"Clipboard timeout keeps paste armed and leaves the target unchanged; ready="+f.CopyReady+"; busy="+f.Busy+"; length="+box.TextLength+"; status="+f.Status,report); }
+                PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="Clipboard timeout retry"; }); Assert(!f.CopyReady&&box.Text=="Clipboard timeout retry","Pressing again retries after clipboard timeout",report);
+                box.SelectAll(); PressTestButton(f,box,2); WaitFor(delegate { return f.CopyReady; }); box.Clear();
+                using(var hold=new ClipboardHold()) { PressTestButton(f,box,2); Pump(100); f.Reset(); }
+                Pump(250); Assert(!f.CopyReady&&!f.PathReady&&!f.Busy&&box.TextLength==0,"Reset cancels a deferred paste without sending delayed input",report);
+                box.Text="Focus cancellation retry"; box.SelectAll(); PressTestButton(f,box,2); WaitFor(delegate { return f.CopyReady&&Clipboard.ContainsText()&&Clipboard.GetText()=="Focus cancellation retry"; }); box.Clear();
+                using(var hold=new ClipboardHold()) {
+                    PressTestButton(f,box,2); Pump(100);
+                    using(var other=new Form {Text="Controlled focus target",TopMost=true,Size=new Size(300,160)}) {
+                        other.Show(); Native.FocusTestWindow(other.Handle); WaitFor(delegate { return !f.Busy; });
+                        Assert(f.CopyReady&&!f.Busy&&box.TextLength==0,"Changing windows cancels deferred paste while preserving retry state",report); other.Close();
+                    }
+                }
+                PressTestButton(f,box,2); WaitFor(delegate { return box.Text=="Focus cancellation retry"; }); Assert(!f.CopyReady&&box.Text=="Focus cancellation retry","Cancelled paste can be retried in the intended target",report);
+                box.SelectAll(); PressTestButton(f,box,2); WaitFor(delegate { return f.CopyReady; }); box.Clear();
+                using(var hold=new ClipboardHold()) { PressTestButton(f,box,2); Pump(100); f.TogglePause(); }
+                Pump(250); Assert(!f.Busy&&box.TextLength==0,"Pause cancels deferred input before the clipboard becomes available",report);
+                box.SelectAll(); PressTestButton(f,box,2); Pump(150);
                 Assert(!f.CopyReady && !f.Active,"Paused buttons do not run macros",report);
                 f.TogglePause(); f.SetSwap(true); box.Text="swapped copy"; box.SelectAll(); PressTestButton(f,box,1); WaitFor(delegate { return f.CopyReady && Clipboard.ContainsText() && Clipboard.GetText()=="swapped copy"; });
                 Assert(f.CopyReady && Clipboard.GetText()=="swapped copy","Swapped button 1 uses copy macro: "+f.Status+"; focused="+box.Focused,report);

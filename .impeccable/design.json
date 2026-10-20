@@ -1,12 +1,151 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-20T20:03:38Z",
-  "title": "Design System: Tumacro application icon",
+  "generatedAt": "2026-10-20T23:16:22.330090Z",
+  "title": "Design System: Tumacro Studio and application icon",
   "extensions": {
     "colorMeta": {
-      "thumb-orange": { "role": "primary", "displayName": "Thumb orange" },
-      "porcelain": { "role": "neutral", "displayName": "Porcelain" },
-      "graphite": { "role": "neutral", "displayName": "Graphite" }
+      "action-orange": {
+        "role": "primary",
+        "displayName": "Action orange"
+      },
+      "action-hover": {
+        "role": "primary",
+        "displayName": "Action hover"
+      },
+      "mineral": {
+        "role": "neutral",
+        "displayName": "Mineral"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper"
+      },
+      "studio-graphite": {
+        "role": "neutral",
+        "displayName": "Studio graphite"
+      },
+      "raised-graphite": {
+        "role": "neutral",
+        "displayName": "Raised graphite"
+      },
+      "ivory-text": {
+        "role": "neutral",
+        "displayName": "Ivory text"
+      },
+      "muted-light": {
+        "role": "neutral",
+        "displayName": "Muted light"
+      },
+      "muted-dark": {
+        "role": "neutral",
+        "displayName": "Muted dark"
+      },
+      "line-light": {
+        "role": "neutral",
+        "displayName": "Line light"
+      },
+      "line-dark": {
+        "role": "neutral",
+        "displayName": "Line dark"
+      },
+      "soft-light": {
+        "role": "neutral",
+        "displayName": "Soft light"
+      },
+      "soft-dark": {
+        "role": "neutral",
+        "displayName": "Soft dark"
+      },
+      "disabled-text-light": {
+        "role": "neutral",
+        "displayName": "Disabled text light"
+      },
+      "active-light": {
+        "role": "secondary",
+        "displayName": "Active light"
+      },
+      "active-dark": {
+        "role": "secondary",
+        "displayName": "Active dark"
+      },
+      "mouse-fill-light": {
+        "role": "neutral",
+        "displayName": "Mouse fill light"
+      },
+      "mouse-fill-dark": {
+        "role": "neutral",
+        "displayName": "Mouse fill dark"
+      },
+      "mouse-edge-light": {
+        "role": "neutral",
+        "displayName": "Mouse edge light"
+      },
+      "mouse-edge-dark": {
+        "role": "neutral",
+        "displayName": "Mouse edge dark"
+      },
+      "thumb-orange": {
+        "role": "primary",
+        "displayName": "Thumb orange"
+      },
+      "porcelain": {
+        "role": "neutral",
+        "displayName": "Porcelain"
+      },
+      "graphite": {
+        "role": "neutral",
+        "displayName": "Graphite"
+      }
+    },
+    "typographyMeta": {
+      "brand": {
+        "displayName": "Brand",
+        "purpose": "Native Studio interface text."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Native Studio interface text."
+      },
+      "sidebar-title": {
+        "displayName": "Sidebar title",
+        "purpose": "Native Studio interface text."
+      },
+      "section-title": {
+        "displayName": "Section title",
+        "purpose": "Native Studio interface text."
+      },
+      "state": {
+        "displayName": "State",
+        "purpose": "Native Studio interface text."
+      },
+      "item-title": {
+        "displayName": "Item title",
+        "purpose": "Native Studio interface text."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Native Studio interface text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Native Studio interface text."
+      },
+      "input-id": {
+        "displayName": "Input id",
+        "purpose": "Physical input identities or recorded key combinations."
+      },
+      "row-id": {
+        "displayName": "Row id",
+        "purpose": "Physical input identities or recorded key combinations."
+      },
+      "chord": {
+        "displayName": "Chord",
+        "purpose": "Physical input identities or recorded key combinations."
+      },
+      "summary-chord": {
+        "displayName": "Summary chord",
+        "purpose": "Physical input identities or recorded key combinations."
+      }
     }
   },
   "components": [
@@ -14,35 +153,110 @@
       "name": "Application icon",
       "kind": "custom",
       "refersTo": "application-icon",
-      "description": "Static mouse macro icon. Geometry comes from assets/Tumacro.svg; these tokens apply to the icon only.",
+      "description": "Preserved static application icon. Geometry and palette come from assets/Tumacro.svg and apply to the icon only.",
       "html": "<svg class=\"ds-tumacro-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" role=\"img\" aria-labelledby=\"ds-tumacro-title\"><title id=\"ds-tumacro-title\">Tumacro: two thumb controls</title><rect x=\"2\" y=\"2\" width=\"60\" height=\"60\" rx=\"14\" fill=\"#f1efe8\"/><path d=\"M35 10C25 10 20 17 20 27v12c0 10 6 16 15 16s16-7 16-17V26c0-10-6-16-16-16Z\" fill=\"#171d21\"/><rect x=\"33\" y=\"17\" width=\"5\" height=\"8\" rx=\"2\" fill=\"#f1efe8\"/><rect x=\"13\" y=\"28\" width=\"12\" height=\"8\" rx=\"2\" fill=\"#e57845\"/><rect x=\"13\" y=\"40\" width=\"12\" height=\"8\" rx=\"2\" fill=\"#e57845\"/></svg>",
       "css": ".ds-tumacro-icon { display: block; width: 64px; height: 64px; }"
+    },
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Enabled Save and New macro action. Documentation preview; native C# is the rendering authority.",
+      "html": "<button class=\"ds-primary\">Save macro</button>",
+      "css": ".ds-primary{font:10pt 'Segoe UI';border:1px solid #d2d7cd;border-radius:0;padding:4px 12px;min-width:84px;min-height:38px;cursor:pointer;background:#f07a3f;color:#191d1c}.ds-primary:hover{background:#ff8f53}.ds-primary:active{background:#f07a3f}.ds-primary:focus-visible{outline:1px dotted currentColor;outline-offset:-5px;}@media(prefers-color-scheme:dark){.ds-primary{border-color:#4b564b}}"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary-light",
+      "description": "Pause, Cancel, and other neutral actions. Documentation preview; native C# is the rendering authority.",
+      "html": "<button class=\"ds-secondary\">Cancel</button>",
+      "css": ".ds-secondary{font:10pt 'Segoe UI';border:1px solid #d2d7cd;border-radius:0;padding:4px 12px;min-width:84px;min-height:38px;cursor:pointer;background:#fcfcf9;color:#191d1c}.ds-secondary:hover,.ds-secondary:active{background:#e6e9df}.ds-secondary:focus-visible{outline:1px dotted currentColor;outline-offset:-5px;}@media(prefers-color-scheme:dark){.ds-secondary{background:#242a28;color:#f0f1ea;border-color:#4b564b}.ds-secondary:hover,.ds-secondary:active{background:#343e35}}"
+    },
+    {
+      "name": "Disabled action",
+      "kind": "button",
+      "refersTo": "button-disabled-light",
+      "description": "Unavailable Save during shortcut recording, using a neutral surface. Documentation preview; native C# is the rendering authority.",
+      "html": "<button class=\"ds-disabled\" disabled>Save macro</button>",
+      "css": ".ds-disabled{font:10pt 'Segoe UI';border:1px solid #d2d7cd;border-radius:0;padding:4px 12px;min-width:84px;min-height:38px;cursor:pointer;background:#e6e9df;color:#5c645b;cursor:default}@media(prefers-color-scheme:dark){.ds-disabled{background:#343e35;color:#aeb6ac;border-color:#4b564b}}"
+    },
+    {
+      "name": "Shortcut recorder",
+      "kind": "input",
+      "refersTo": "shortcut-value-light",
+      "description": "Bordered chord value with explicit Record and Clear controls. Documentation preview; native C# is the rendering authority.",
+      "html": "<div class=\"ds-recorder\"><output class=\"ds-value\">Ctrl + Alt + F9</output><div class=\"ds-record-actions\"><button>Record</button><button>Clear</button><span>Click Record to change.</span></div></div>",
+      "css": ".ds-recorder{font:9pt 'Segoe UI';color:#586151;background:#f4f4ef;min-width:280px;height:88px}.ds-value{display:block;height:32px;padding:4px 8px;border:1px solid #d2d7cd;font:11pt Consolas;color:#191d1c}.ds-record-actions{display:flex;align-items:center;gap:8px;margin-top:8px}.ds-record-actions button{font:10pt 'Segoe UI';height:34px;border:1px solid #d2d7cd;background:#fcfcf9;color:#191d1c;cursor:pointer}.ds-record-actions button:first-child{width:132px}.ds-record-actions button:nth-child(2){width:80px}.ds-record-actions button:hover,.ds-record-actions button:active{background:#f4f4ef}.ds-record-actions button:focus-visible{outline:1px dotted currentColor;outline-offset:-5px;}@media(prefers-color-scheme:dark){.ds-recorder{color:#aeb6ac;background:#191d1c}.ds-value{color:#f0f1ea;border-color:#4b564b}.ds-record-actions button{background:#242a28;color:#f0f1ea;border-color:#4b564b}.ds-record-actions button:hover,.ds-record-actions button:active{background:#191d1c}}"
+    },
+    {
+      "name": "Selected mouse input",
+      "kind": "nav",
+      "refersTo": "mouse-input-selected",
+      "description": "Actual input identity on the physical mouse diagram. Documentation preview; native C# is the rendering authority.",
+      "html": "<button class=\"ds-input-selected\" aria-pressed=\"true\" aria-label=\"Thumb button 1\">1</button>",
+      "css": ".ds-input-selected{width:46px;height:44px;border:1px solid #d2d7cd;border-radius:0;background:#f07a3f;color:#191d1c;font:bold 11pt Consolas;cursor:pointer}.ds-input-selected:hover{background:#ff8f53}.ds-input-selected:active{background:#f07a3f}.ds-input-selected:focus-visible{outline:1px dotted currentColor;outline-offset:-5px;}@media(prefers-color-scheme:dark){.ds-input-selected{border-color:#4b564b}}"
+    },
+    {
+      "name": "Macro summary",
+      "kind": "button",
+      "refersTo": "macro-summary",
+      "description": "Saved macro name and a separate monospaced trigger/output line. Documentation preview; native C# is the rendering authority.",
+      "html": "<button class=\"ds-summary\"><span>Command palette</span><code>Ctrl + Alt + F9 → Ctrl + Shift + P</code><svg viewBox=\"0 0 8 12\" width=\"8\" height=\"12\" aria-hidden=\"true\"><path d=\"m1 1 5 5-5 5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg></button>",
+      "css": ".ds-summary{position:relative;display:block;min-width:280px;height:66px;padding:4px 30px 4px 12px;text-align:left;border:1px solid #d2d7cd;border-radius:0;background:#fcfcf9;color:#191d1c;font:10pt 'Segoe UI';cursor:pointer}.ds-summary span,.ds-summary code{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-summary code{font:9.5pt Consolas;margin-top:7px}.ds-summary svg{position:absolute;right:14px;top:26px}.ds-summary:hover,.ds-summary:active{background:#e6e9df}.ds-summary:focus-visible{outline:1px dotted currentColor;outline-offset:-5px;}@media(prefers-color-scheme:dark){.ds-summary{background:#242a28;color:#f0f1ea;border-color:#4b564b}.ds-summary:hover,.ds-summary:active{background:#343e35}}"
+    },
+    {
+      "name": "Choice control",
+      "kind": "input",
+      "refersTo": "button-secondary-light",
+      "description": "Theme, language, or wheel selector; the native app opens a ContextMenuStrip. Documentation preview; native C# is the rendering authority.",
+      "html": "<button class=\"ds-choice\" aria-haspopup=\"menu\">Follow Windows<svg viewBox=\"0 0 8 5\" width=\"8\" height=\"5\" aria-hidden=\"true\"><path d=\"m1 1 3 3 3-3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg></button>",
+      "css": ".ds-choice{position:relative;min-width:174px;height:32px;padding:0 24px 0 8px;text-align:left;border:1px solid #d2d7cd;border-radius:0;background:#fcfcf9;color:#191d1c;font:10pt 'Segoe UI';cursor:pointer}.ds-choice svg{position:absolute;right:12px;top:13px}.ds-choice:hover,.ds-choice:active{background:#e6e9df}.ds-choice:focus-visible{outline:1px dotted currentColor;outline-offset:-5px;}@media(prefers-color-scheme:dark){.ds-choice{background:#242a28;color:#f0f1ea;border-color:#4b564b}.ds-choice:hover,.ds-choice:active{background:#343e35}}"
     }
   ],
   "narrative": {
     "northStar": "Quiet industrial control graphics",
-    "overview": "Tumacro's icon identifies its mouse macro function through a broad mouse body and two highlighted thumb controls. The user chose recognition of this hardware interaction over recognition of the product name. The finished icon uses authored vector geometry and flat fills.\n\nThis document covers the application icon identity only. The native application's existing violet light and dark interface remains outside this palette and token set. Use the source SVG as the geometry authority when exporting the icon.",
+    "overview": "Tumacro Studio puts mouse assignments and keyboard macros on a native Windows control board. The user chose Apple interface restraint and Teenage Engineering instrument character: flat materials, readable input identities, and orange controls with a clear purpose. The physical mouse diagram and live next-action readouts connect each numbered input to its current function.\n\nThis system covers the WinForms Studio interface and the existing application icon. The icon retains its own palette and authored geometry. Use the C# controls as the interface authority and the source SVG as the icon authority. The sidecar's HTML previews illustrate the controls for documentation only.",
     "keyCharacteristics": [
-      "Broad asymmetric graphite mouse with a short porcelain wheel inset.",
-      "Two separate orange thumb controls on a porcelain field.",
-      "Static geometry with no lettering, arrow badge, texture, or shadow."
+      "Mouse assignments and keyboard macros share the overview.",
+      "Mineral and paper in light mode. Graphite surfaces in dark mode.",
+      "Orange identifies enabled primary actions, selected inputs, and active recording.",
+      "Segoe UI carries interface copy; Consolas identifies inputs and key combinations.",
+      "Flat control surfaces and a fixed mouse sidebar keep operation predictable."
     ],
     "rules": [
       {
-        "name": "The Icon Scope Rule",
-        "body": "Apply these colors to the icon asset. Preserve the application's existing UI theme when extending native screens.",
+        "name": "The Action Accent Rule",
+        "body": "Reserve Studio orange for enabled primary actions, selected inputs, and active recording. Disabled buttons use neutral surfaces in both themes.",
         "section": "colors"
+      },
+      {
+        "name": "The Icon Boundary Rule",
+        "body": "Preserve the icon's exact palette and SVG geometry. Studio palette changes do not recolor the icon.",
+        "section": "colors"
+      },
+      {
+        "name": "The Input Type Rule",
+        "body": "Use Consolas for physical input identifiers and key combinations. Keep interface labels and instructions in Segoe UI.",
+        "section": "typography"
       }
     ],
     "dos": [
-      "Do preserve the source silhouette, separate thumb controls, and short wheel inset when exporting.",
-      "Do check the icon at native small sizes on light and dark backgrounds after an asset change.",
+      "Do keep both mouse assignments and keyboard macros visible in the overview.",
+      "Do retain readable disabled captions and native keyboard focus in both themes.",
+      "Do preserve explicit theme choices when Windows changes its preference.",
+      "Do keep input numbers and key combinations distinct through Consolas.",
+      "Do preserve the icon silhouette, separate thumb controls, and short wheel inset when exporting.",
+      "Do check the icon at small native sizes on light and dark backgrounds after an asset change.",
       "Do keep the SVG, PNG preview, and all nine ICO entries consistent."
     ],
     "donts": [
-      "Don't restore the rejected thin oval, letter T, or arrow badge.",
-      "Don't add lettering, texture, ornament, or simulated depth to this icon.",
-      "Don't apply the icon palette as a replacement for the native application's violet UI themes."
+      "Don't use the enabled orange fill for disabled controls.",
+      "Don't replace input identities with decorative numbering.",
+      "Don't add gradients, texture, simulated depth, or ornamental motion to Studio.",
+      "Don't restore the icon's rejected thin oval, letter T, or arrow badge.",
+      "Don't add lettering, texture, ornament, or simulated depth to the icon.",
+      "Don't merge the Studio and icon palettes into one recolored asset set."
     ]
   }
 }

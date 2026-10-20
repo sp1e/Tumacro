@@ -8,11 +8,12 @@ using System.Windows.Forms;
 // halves of each captured key so Windows and registered shortcuts cannot run it.
 sealed class ShortcutBox : UserControl {
     readonly Label valueLabel=new Label(), hint=new Label();
-    readonly Button record=new Button(), clear=new Button();
+    readonly Button record=new StudioButton(), clear=new StudioButton();
     readonly HashSet<int> pressed=new HashSet<int>();
     Native.HookProc callback; IntPtr keyboardHook;
     Form owner; string value="", previous="", candidate, language="sv";
     bool completing, invalid;
+    bool paletteReady; Color paletteText,paletteMuted,paletteAccent,paletteEdge,paletteField,paletteSurface;
     public event EventHandler RecordingChanged;
     public bool Recording { get { return keyboardHook!=IntPtr.Zero; } }
     string L(string text) { return UiText.Translate(text,language); }
@@ -23,6 +24,7 @@ sealed class ShortcutBox : UserControl {
     public ShortcutBox() {
         Height=88; MinimumSize=new Size(280,88); TabStop=false;
         valueLabel.BorderStyle=BorderStyle.FixedSingle; valueLabel.Padding=new Padding(8,4,8,4); valueLabel.Height=32;
+        valueLabel.Font=new Font("Consolas",11);
         record.Height=34; record.Width=132; record.FlatStyle=FlatStyle.Flat; record.Cursor=Cursors.Hand;
         clear.Height=34; clear.Width=80; clear.FlatStyle=FlatStyle.Flat; clear.Cursor=Cursors.Hand;
         hint.AutoEllipsis=true; hint.Font=new Font("Segoe UI",9); hint.Height=36;
@@ -35,13 +37,22 @@ sealed class ShortcutBox : UserControl {
         RefreshText();
     }
     public void SetLanguage(string code) { language=code; RefreshText(); }
+    public void ApplyPalette(bool dark,Color text,Color muted,Color accent,Color edge,Color field,Color surface) {
+        paletteReady=true; paletteText=text; paletteMuted=muted; paletteAccent=accent; paletteEdge=edge; paletteField=field; paletteSurface=surface; PaintPalette();
+    }
+    void PaintPalette() {
+        if(!paletteReady) return;
+        BackColor=paletteField; valueLabel.BackColor=paletteField; valueLabel.ForeColor=paletteText; hint.ForeColor=paletteMuted;
+        foreach(var button in new[]{record,clear}) { button.BackColor=button==record&&Recording?paletteAccent:paletteSurface; button.ForeColor=button==record&&Recording?Color.FromArgb(25,29,28):paletteText; button.FlatAppearance.BorderColor=paletteEdge; button.FlatAppearance.MouseOverBackColor=button==record&&Recording?paletteAccent:paletteField; button.FlatAppearance.MouseDownBackColor=paletteField; button.Invalidate(); }
+    }
     void RefreshText() {
         if(valueLabel==null) return;
-        valueLabel.Text=value==""?L("Ingen kombination vald."):value;
-        record.Text=Recording?L("Avbryt inspelning"):L("Spela in"); clear.Text=L("Rensa"); clear.Enabled=Enabled&&!Recording&&value!="";
+        valueLabel.Text=Recording?L("Tryck tangentkombinationen…"):value==""?L("Ingen kombination vald."):value;
+        record.Text=Recording?L("Avbryt"):L("Spela in"); record.Tag=Recording?"record-active":"button"; clear.Text=L("Rensa"); clear.Enabled=Enabled&&!Recording&&value!="";
         record.AccessibleName=L("Spela in tangentkombination"); clear.AccessibleName=L("Rensa tangentkombination");
         valueLabel.AccessibleName=AccessibleName; valueLabel.AccessibleDescription=valueLabel.Text;
         hint.Text=Recording?L("Tryck kombinationen och släpp tangenterna. Esc avbryter."):L("Klicka på Spela in för att ändra.");
+        PaintPalette();
     }
     public void StartRecording() {
         if(Recording||!Enabled||!Visible) return;
@@ -79,6 +90,7 @@ sealed class ShortcutBox : UserControl {
                 BeginInvoke((Action)delegate { if(Recording) FinishRecording(!invalid&&candidate!=null); });
             }
         }
+        if(candidate==null&&!invalid) valueLabel.Text=(Held(17,162,163)?"Ctrl + ":"")+(Held(18,164,165)?"Alt + ":"")+(Held(16,160,161)?"Shift + ":"")+(Held(91,92)?"Win + ":"")+"…";
         return (IntPtr)1;
     }
     void FinishRecording(bool accept) {
@@ -86,7 +98,7 @@ sealed class ShortcutBox : UserControl {
         Native.UnhookWindowsHookEx(keyboardHook); keyboardHook=IntPtr.Zero;
         if(owner!=null) owner.Deactivate-=OwnerDeactivated; owner=null; pressed.Clear();
         Text=accept?candidate:previous; RefreshText();
-        hint.Text=accept?L("Inspelat. Spara för att använda kombinationen."):L("Inspelningen avbröts. Tidigare val finns kvar.");
+        hint.Text=accept?L("Inspelat. Spara för att använda kombinationen."):invalid&&candidate!=null?L("Spela in en kombination i taget."):L("Inspelningen avbröts. Tidigare val finns kvar.");
         if(RecordingChanged!=null) RecordingChanged(this,EventArgs.Empty);
     }
     public void CancelRecording() { FinishRecording(false); }
